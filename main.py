@@ -10,9 +10,8 @@ from flask_cors import CORS
 from jinja2.filters import ignore_case
 from timeloop import Timeloop
 
-from constants import DATA
-from nsn_logging import debug, error, info, warning, set_verbosity
-from reddit_source import RedditSource
+from common.constants import DATA
+from common.nsn_logging import debug, error, info, warning, set_verbosity
 
 app = Flask(__name__)
 # TODO(gdottl): #security configure CORS.
@@ -34,7 +33,8 @@ def index():
 
 @app.route('/posts')
 def posts():
-  out = []
+  # XXX: list(range(10)) HACK
+  out = list(range(10)) # []
   for source in _sources:
     tmp = source.get_posts(10)
     out += tmp
@@ -50,14 +50,7 @@ def liked():
 
 
 def main():
-  tl = Timeloop()
-  _sources.append(RedditSource())
-  for source in _sources:
-    atexit.register(source.close)
-    source.schedule_or_start(tl)
-  # Scheduling
-  tl.start(block=False)
-
+  print('main')
 
 # Running web app in local machine
 if __name__ == '__main__':
