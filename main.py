@@ -54,6 +54,8 @@ def main():
 
 # Running web app in local machine
 if __name__ == '__main__':
+  from common import settings
+  settings.setup_cloud_profiler(os.path.basename(os.path.dirname(main.__file__))
   set_verbosity('info')
   main()
   app.run(host='0.0.0.0', port=5000)
