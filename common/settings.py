@@ -45,10 +45,10 @@ def setup_cloud_profiling(service_name):
   try:
     googlecloudprofiler.start(
         service=service_name,
-        service_version='1.0.1', # TODOs
+        service_version=get_git_commit(),
         # verbose is the logging level. 0-error, 1-warning, 2-info,
         # 3-debug. It defaults to 0 (error) if not set.
-        verbose=3,
+        verbose=0,
         # project_id must be set if not running on GCP.
         project_id='recommender-270613',
     )
