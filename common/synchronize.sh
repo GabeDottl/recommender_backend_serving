@@ -1,3 +1,3 @@
 git stash
-git subrepo pull --rebase common
+git subrepo pull common
 git stash pop
