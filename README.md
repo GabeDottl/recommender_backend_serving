@@ -15,3 +15,4 @@ docker container kill 8f61baa075c4
 Note requirements.txt generated via:
 # pip3 install pipreqs
 pipreqs .
+docker tag serving:latest gcr.io/recommender-270613/serving:tag1
