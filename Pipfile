@@ -17,6 +17,7 @@ protobuf = "==3.11.3"
 Jinja2 = "==2.11.1"
 Flask = "==1.1.1"
 Flask-Cors = "==3.0.8"
+google-cloud-profiler = "*"
 
 [requires]
 python_version = "3.6"
