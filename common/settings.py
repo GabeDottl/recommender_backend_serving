@@ -56,6 +56,23 @@ def setup_cloud_profiling(service_name):
     error(exc)  # Handle errors here
 
 
+@cached_fn
+def get_serving_address():
+  if is_gce:
+    # [INSTANCE_NAME].[ZONE].c.[PROJECT_ID].internal
+    instance_name = 'serving-1'
+    zone = 'us-west2-a'
+    project_id = 'recommender-270613'
+    port = 5000
+    # NOTE: This won't work with cloud-shell since it's not in our VPC.
+    address = f'http://{instance_name}.{zone}.c.{project_id}.internal:{port}'
+    info(f'Using VPC internal DNS name: {address}')
+  else:
+    address = "http://34.94.222.40:5000"
+    warning(f'Using static IP!!! May not work... {address}')
+  return address
+
+
 def _is_gce():
   import os
   import socket
