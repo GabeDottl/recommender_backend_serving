@@ -37,11 +37,31 @@ def get_git_commit():
   return 'Unknown commit'
 
 
+def setup_cloud_profiling(service_name):
+  import googlecloudprofiler
+  # Profiler initialization. It starts a daemon thread which continuously
+  # collects and uploads profiles. Best done as early as possible.
+  try:
+    googlecloudprofiler.start(
+        service=service_name,
+        service_version='1.0.1',
+        # verbose is the logging level. 0-error, 1-warning, 2-info,
+        # 3-debug. It defaults to 0 (error) if not set.
+        verbose=3,
+        # project_id must be set if not running on GCP.
+        project_id='recommender-270613',
+    )
+  except (ValueError, NotImplementedError) as exc:
+    error(exc)  # Handle errors here
+
+
 def _is_gce():
   import os
   import socket
   hostname = socket.gethostname()
-  local = os.getenv('IS_LOCAL') is not None or hostname == 'gabe-ubuntu' or hostname == 'Gabes-MacBook-Pro.local'
+  local = os.getenv(
+      'IS_LOCAL'
+  ) is not None or hostname == 'gabe-ubuntu' or hostname == 'Gabes-MacBook-Pro.local'
   info(
       f'Running on {hostname} - treated as {"non-GCE/local" if local else "GCE"}. Project at git-commit {get_git_commit()}'
   )
