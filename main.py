@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from http import HTTPStatus
 
 from common.constants import DATA
 from common.nsn_logging import debug, error, info, warning, set_verbosity
@@ -23,6 +24,11 @@ _sources = []
 @app.route('/ingest', methods=['POST'])
 def ingest():
   content = request.json
+  if not isinstance(content, list):
+    message = f'Ingested data does not match expected format: [{{doc}}, {{doc}}, ...]. Got: {content}'
+    error(message)
+    return message, HTTPStatus.BAD_REQUEST
+
   info(f'Ingesting data!!: {content}')
   return '' # Return something so Response is marked successful.
 
