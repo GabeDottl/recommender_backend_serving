@@ -1,0 +1,21 @@
+ steps:
+ # build the container image
+ - name: 'gcr.io/cloud-builders/docker'
+   args: ['build', '-t', 'gcr.io/recommender-270613/serving:$COMMIT_SHA', '.']
+ # push the container image to Container Registry
+ - name: 'gcr.io/cloud-builders/docker'
+   args: ['push', 'gcr.io/recommender-270613/serving:$COMMIT_SHA']
+ # Deploy container image to Cloud Run
+ - name: 'gcr.io/cloud-builders/gcloud'
+   args:
+   - 'run'
+   - 'deploy'
+   - 'serving'
+   - '--image'
+   - 'gcr.io/recommender-270613/serving:$COMMIT_SHA'
+   - '--region'
+   - '[us-west2]'
+   - '--platform'
+   - 'managed'
+ images:
+ - 'gcr.io/recommender-270613/serving:$COMMIT_SHA'

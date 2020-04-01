@@ -41,17 +41,18 @@ def setup_cloud_profiling(service_name):
   import googlecloudprofiler
   # Profiler initialization. It starts a daemon thread which continuously
   # collects and uploads profiles. Best done as early as possible.
+  info(f'Setting up cloud profiler with service_name {service_name}')
   try:
     googlecloudprofiler.start(
         service=service_name,
-        service_version='1.0.1',
+        service_version='1.0.1', # TODOs
         # verbose is the logging level. 0-error, 1-warning, 2-info,
         # 3-debug. It defaults to 0 (error) if not set.
         verbose=3,
         # project_id must be set if not running on GCP.
         project_id='recommender-270613',
     )
-  except (ValueError, NotImplementedError) as exc:
+  except Exception as exc:
     error(exc)  # Handle errors here
 
 

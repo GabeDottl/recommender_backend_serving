@@ -1,14 +1,9 @@
 import atexit
 import os
 from datetime import datetime, timedelta
-from distutils.log import set_verbosity
-from threading import RLock
 
-import pandas as pd
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from jinja2.filters import ignore_case
-from timeloop import Timeloop
 
 from common.constants import DATA
 from common.nsn_logging import debug, error, info, warning, set_verbosity
@@ -28,7 +23,9 @@ def index():
   '''
 
   import socket
-  return f'This is {socket.gethostname()}!!!!'
+  from common.settings import get_git_commit
+  version = get_git_commit()
+  return f'This is {socket.gethostname()} @ {version}!!!!'
 
 
 @app.route('/posts')
@@ -55,7 +52,9 @@ def main():
 # Running web app in local machine
 if __name__ == '__main__':
   from common import settings
-  settings.setup_cloud_profiler(os.path.basename(os.path.dirname(main.__file__)))
+  import common
+  service_name = os.path.basename(os.path.dirname(os.path.dirname(common.__file__)))
+  settings.setup_cloud_profiling(service_name)
   set_verbosity('info')
   main()
   app.run(host='0.0.0.0', port=5000)
