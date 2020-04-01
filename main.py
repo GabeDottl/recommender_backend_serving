@@ -15,6 +15,19 @@ CORS(app)  # Sets up Access-Control-Allow-Origin
 _sources = []
 
 
+########################### PRIVATE ENDPOINTS ############################
+# N.b.: THIS IS NOT LOCKED DOWN AT ALL!!!!
+# #security #hack This is allowed mostly for experimentation before committing to a more proper
+# communication mechanism.
+
+@app.route('/ingest', methods=['POST'])
+def ingest():
+  content = request.json
+  info(f'Ingesting data!!: {content}')
+  return '' # Return something so Response is marked successful.
+
+########################### PUBLIC ENDPOINTS ############################
+
 @app.route('/')
 def index():
   '''
@@ -28,7 +41,7 @@ def index():
   return f'This is {socket.gethostname()} @ {version}!!!!'
 
 
-@app.route('/posts')
+@app.route('/posts', methods=['GET'])
 def posts():
   # XXX: list(range(10)) HACK
   out = list(range(10)) # []
@@ -43,18 +56,16 @@ def posts():
 def liked():
   # TODO Browser cook for personalization.
   info(f'Got ID: {request.args["id"]}')
-  return ''
+  return '' # Return something so Response is marked successful.
 
 
 def main():
-  print('main')
-
-# Running web app in local machine
-if __name__ == '__main__':
   from common import settings
   import common
   service_name = os.path.basename(os.path.dirname(os.path.dirname(common.__file__)))
   settings.setup_cloud_profiling(service_name)
   set_verbosity('info')
-  main()
   app.run(host='0.0.0.0', port=5000)
+
+if __name__ == '__main__':
+  main()
