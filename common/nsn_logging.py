@@ -129,6 +129,19 @@ def __get_call_info(function_lookback_count=1):
   return filename, func, lineno
 
 
+def maybe_set_verbosity_from_args():
+  # TODO: Move parser into a shared file so we're not repeatedly parsing + we can support help...
+  from argparse import ArgumentParser
+  parser = ArgumentParser()
+  parser.add_argument('--verbosity', type=str, nargs='?', default=None)
+  args, _ = parser.parse_known_args()
+  if args.verbosity is not None:
+    info(f'Setting verbosity to {args.verbosity}.')
+    set_verbosity(args.verbosity)
+
+
 # We set reasonable defaults here, however, best-practice is to set verbosity minimally in __main__.
-set_verbosity('info')
 send_logs_to_stdout()
+set_verbosity('info')
+# override from args if specified. Call again if overridden in main.
+maybe_set_verbosity_from_args()

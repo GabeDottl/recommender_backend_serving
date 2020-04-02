@@ -12,19 +12,20 @@ app = Flask(__name__)
 # TODO(gdottl): #security configure CORS.
 CORS(app)  # Sets up Access-Control-Allow-Origin
 
-_sources = []
+_sources = {}
 
 ########################### PRIVATE ENDPOINTS ############################
 # N.b.: THIS IS NOT LOCKED DOWN AT ALL!!!!
 # #security #hack This is allowed mostly for experimentation before committing to a more proper
 # communication mechanism.
 
+
 @app.route('/ingest', methods=['POST'])
 def ingest():
   content = ''
   try:
     content = request.json
-    info(f'Ingesting data!!: {content}')
+    debug(f'Ingesting data!!: {content}')
     return ''  # Return something so Response is marked successful.
   except Exception as e:
     message = f'Ingested data does not match expected format: [{{doc}}, {{doc}}, ...]. Got: {content}. Error: {e}'
@@ -65,18 +66,14 @@ def liked():
   info(f'Got ID: {request.args["id"]}')
   return ''  # Return something so Response is marked successful.
 
+
 def _main():
   from common import settings
   import common
   service_name = os.path.basename(
       os.path.dirname(os.path.dirname(common.__file__)))
   settings.setup_cloud_profiling(service_name)
-  set_verbosity('info')
 
-
-# def main_dev(*args):
-#   _main()
-#   app.run(host='0.0.0.0', port=5000)
 
 def main_waitress(*args):
   _main()
