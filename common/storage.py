@@ -13,7 +13,7 @@ import os
 from .utils import cached_fn
 from .settings import is_gce
 from .nsn_logging import info, debug, error, warning
-from .serving_api import 
+from .serving_api import push_documents
 
 
 class _Storage:
@@ -47,13 +47,15 @@ class _Storage:
 
 
 def save_stream(stream, collection_name):
-  c = db().collection(collection_name)
+  # c = db().collection(collection_name)
   count = 0
   for article in stream:
     if article:
       count += 1
       url = article['source_url']
-      c.document(url.replace('/', '-').replace(':', '.')).set(article)
+      id = url.replace('/', '-').replace(':', '.')
+      article['id'] = id
+      push_documents(collection_name, [article])
   info(f'Wrote a total of {count} articles to collection {collection_name}')
 
 
