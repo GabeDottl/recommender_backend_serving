@@ -58,11 +58,17 @@ def setup_cloud_profiling(service_name):
 
 @cached_fn
 def get_serving_address(localhost=False):
+  from argparse import ArgumentParser
+  parser = ArgumentParser()
+  parser.add_argument('--local', action='store_true')
+  args, _ = parser.parse_known_args()
+
+
   # NOTE / WARNING: This function is cached without it's argument - so whoever calls this first
   # dictates the value of |localhost|. This is a helpful hack for allowing interactive sessions
   # to force a local serving instance.
   port = 5000
-  if localhost:
+  if localhost or args.local:
     address = f'http://localhost:{port}'
     warning(f'Using localhost as serving IP. {address}')
   elif is_gce:
