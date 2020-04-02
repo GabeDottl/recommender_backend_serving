@@ -57,18 +57,25 @@ def setup_cloud_profiling(service_name):
 
 
 @cached_fn
-def get_serving_address():
-  if is_gce:
+def get_serving_address(localhost=False):
+  # NOTE / WARNING: This function is cached without it's argument - so whoever calls this first
+  # dictates the value of |localhost|. This is a helpful hack for allowing interactive sessions
+  # to force a local serving instance.
+  port = 5000
+  if localhost:
+    address = f'http://localhost:{port}'
+    warning(f'Using localhost as serving IP. {address}')
+  elif is_gce:
     # [INSTANCE_NAME].[ZONE].c.[PROJECT_ID].internal
     instance_name = 'serving-1'
     zone = 'us-west2-a'
     project_id = 'recommender-270613'
-    port = 5000
+    
     # NOTE: This won't work with cloud-shell since it's not in our VPC.
     address = f'http://{instance_name}.{zone}.c.{project_id}.internal:{port}'
     info(f'Using VPC internal DNS name: {address}')
   else:
-    address = "http://34.94.222.40:5000"
+    address = f"http://34.94.222.40:{port}"
     warning(f'Using static IP!!! May not work... {address}')
   return address
 
