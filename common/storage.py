@@ -13,6 +13,7 @@ import os
 from .utils import cached_fn
 from .settings import is_gce
 from .nsn_logging import info, debug, error, warning
+from .serving_api import 
 
 
 class _Storage:
@@ -39,10 +40,10 @@ class _Storage:
     return firestore.client()
 
 
-@cached_fn
-def db():
-  info(f'Initializing firestore.')
-  return _Storage().db
+# @cached_fn
+# def db():
+#   info(f'Initializing firestore.')
+#   return _Storage().db
 
 
 def save_stream(stream, collection_name):
