@@ -65,16 +65,25 @@ def liked():
   info(f'Got ID: {request.args["id"]}')
   return ''  # Return something so Response is marked successful.
 
-
-def main():
+def _main():
   from common import settings
   import common
   service_name = os.path.basename(
       os.path.dirname(os.path.dirname(common.__file__)))
   settings.setup_cloud_profiling(service_name)
   set_verbosity('info')
-  app.run(host='0.0.0.0', port=5000)
+
+
+# def main_dev(*args):
+#   _main()
+#   app.run(host='0.0.0.0', port=5000)
+
+def main_waitress(*args):
+  _main()
+  # #performance #security Migrate to gunicorn? https://quintagroup.com/cms/python/web-server
+  from waitress import serve
+  serve(app, host="0.0.0.0", port=5000)
 
 
 if __name__ == '__main__':
-  main()
+  main_waitress()

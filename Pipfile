@@ -13,6 +13,7 @@ protobuf = "==3.11.3"
 Flask = "==1.1.1"
 Flask-Cors = "==3.0.8"
 google-cloud-profiler = "*"
+waitress = "*"
 
 [requires]
 python_version = "3.6"
