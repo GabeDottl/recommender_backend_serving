@@ -58,9 +58,3 @@ def save_stream(stream, collection_name):
         article['id'] = id
       push_documents(collection_name, [article])
   info(f'Wrote a total of {count} articles to collection {collection_name}')
-
-
-# @attr.
-# class Collection:
-#   def append_doc(self, doc):
-#     pass

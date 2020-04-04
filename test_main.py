@@ -6,19 +6,19 @@ import pytest
 import main
 
 from common.standard_keys import CLIENT_POST_KEYS
+from local_document_store import get_document_store
+
 
 def _gen_test_data():
-  main._sources = {
-      'test': [{
-          'id': str(i),
-          'image_url': str(i),
-          'title': str(i),
-          'secondary': str(i),
-          'created_utc': str(i),
-          'source_url': str(i),
-          'retrieved_utc': str(i),
-      } for i in range(5)]
-  }
+  return [{
+      'id': str(i),
+      'image_url': str(i),
+      'title_text': str(i),
+      'secondary_text': str(i),
+      'created_utc_sec': str(i),
+      'source_url': str(i),
+      'retrieved_utc_sec': str(i),
+  } for i in range(20)]
 
 
 @pytest.fixture
@@ -27,14 +27,13 @@ def client():
   main.app.config['TESTING'] = True
 
   with main.app.test_client() as client:
-    
-    #     with main.app.app_context():
-    #       main.init_db()
+    # Setup document store with some basic data.
+    store = get_document_store()
+    sources = store.get_or_create_collection('sources')
+    sources.append_documents(['test'])
+    test = store.get_or_create_collection('test')
+    test.append_documents(_gen_test_data())
     yield client
-
-
-#   os.close(db_fd)
-#   os.unlink(main.app.config['DATABASE'])
 
 
 def test_empty_db(client):
@@ -42,12 +41,30 @@ def test_empty_db(client):
   resp = client.get('/')
   assert b'This is' in resp.data
 
-def test_posts_empty(client):
+
+def test_posts(client):
+  resp = client.get('/posts')
+  assert resp.status_code == 200
+  assert isinstance(resp.json, list)
+  assert len(resp.json) == 10
+  user_collection = get_document_store().get_or_create_collection('user')
+  assert len(user_collection.documents) == 10
+  ids = [d['id'] for d in resp.json]
+  _check_format(resp.json)
+  # Ensure only unique results are returned
   resp = client.get('/posts')
   assert isinstance(resp.json, list)
-  assert len(resp.json) >= 1
-  for doc in resp.json:
+  assert len(resp.json) == 10
+  user_collection = get_document_store().get_or_create_collection('user')
+  assert len(user_collection.documents) == 20
+  _check_format(resp.json)
+  ids.extend([d['id'] for d in resp.json])
+  # Ensure all ids are unique.
+  assert len(set(ids)) == 20
+
+
+def _check_format(docs):
+  for doc in docs:
     # Check every expected key is present.
     for k in CLIENT_POST_KEYS:
       assert k in doc
-  

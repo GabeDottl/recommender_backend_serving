@@ -3,6 +3,7 @@ import os
 import uuid
 from datetime import datetime, timedelta
 from http import HTTPStatus
+from itertools import islice
 
 from flask import Flask, jsonify, make_response, request, session, g
 from flask_cors import CORS
@@ -36,8 +37,10 @@ def ingest():
     content = request.json
     debug(f'Ingesting data!!: {content}')
     collection_name = content['collection']
-    get_document_store().append_documents(collection_name, content['documents'])
-    get_document_store().save(os.path.join(os.getenv('DATA'), 'recommender'))
+    
+    collection = get_document_store().get_or_create_collection(collection_name)
+    collection.append_documents(content['documents'])
+    collection.save()
     return ''  # Return something so Response is marked successful.
   except Exception as e:
     message = f'Ingested data does not match expected format: [{{doc}}, {{doc}}, ...]. Got: {content}. Error: {e}'
@@ -75,7 +78,16 @@ def posts(page):
     id = session['id']
     debug(f'Reusing id: {id}')
 
-  return jsonify([_document_to_post(doc) for doc in get_document_store().get_documents()])
+  user_collection = get_document_store().get_or_create_collection('user')
+  sent_set = set(user_collection.documents)
+  sources = get_document_store().get_or_create_collection('sources').documents
+  documents = list(
+      islice(
+          filter(lambda d: d['id'] not in sent_set,
+                 get_document_store().get_documents(sources)), 10))
+  user_collection.append_documents([d['id'] for d in documents])
+
+  return jsonify([_document_to_post(doc) for doc in documents])
 
 
 def _document_to_post(doc):
