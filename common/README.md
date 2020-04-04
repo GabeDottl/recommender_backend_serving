@@ -15,6 +15,35 @@ git subrepo push <dirname>
 It will take the relevant commits from the container repo and push the isolated changes to the subrepo.
 etc etc.
 
+# Testing
+Testing has 2 general purposes:
+1) Ensure robustness of the application
+2) Increasing developer velocity
+
+In large organizations with apps used by numerous users (e.g. Google, Amazon, FB, etc.) the former
+of these is generally important. In smaller organizations and startups which don't have a ton of
+users, tests are more important for the latter goal.
+
+Depending on which of these goals your focus is, your testing style varies substantially. If your
+focus is primarily robustness, then it may stand to reason to take a very heavy-handed approach to
+testing in which every API contract is tested as thoroughly as possible. You may also wanted
+coverage tests run on presubmit which require tests for new code.
+
+If your focus is velocity, then tests should make it easy for a developer to validate there changes
+with minimal effort. For example, it may require spinning up a bunch of services and hooking
+everything together for an e2e manual test which can be time-consuming and requires a broader
+context* of knowledge. A test which can be run automatically and avoids needing to know the entire
+system is therefore highly useful as it decreases the context the developer needs to maintain to
+make changes.
+
+For example, to test a new Source, one could setup an e2e dev environment to manually test - or, one
+could instead validate that the Source sends valid data to the right endpoint.
+
+When velocity is the focus (as is the case at present), a few more general considerations:
+1) Tests shouldn't be slow or hard to run
+2) Tests should test at a high-enough level that a developer should be able to submit code which
+   with high-confidence after only running the tests.
+
 # Performance
 
 ## IndexSet, OrderedSet, set
