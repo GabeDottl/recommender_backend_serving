@@ -5,6 +5,14 @@ Not all are required. More may be included by each source.
 
 TODO: Consider formalizing this - e.g. SourceDocument class, protobuf, etc.
 '''
+REQUIRED_SOURCE_KEYS = (
+    'id',  # Optional; auto-generated if not present.
+    'image_url',
+    'title_text',
+    'secondary_text',  # E.g. Description, alt-text, etc.
+    'created_utc_sec',
+)
+
 # Document
 SOURCE_KEYS = (
     'id',  # Optional; auto-generated if not present.

@@ -16,6 +16,7 @@ from itertools import chain
 from common.runtime_args import parser, parse_known_args
 from common.utils import cached_fn
 from common.nsn_logging import debug, error, info
+from common.standard_keys import REQUIRED_SOURCE_KEYS
 
 parser.add_argument('--local-data', action='store_true', dest='local_data')
 
@@ -39,6 +40,9 @@ class LocalDocumentStore:
                        collection_name,
                        documents,
                        dont_mutate_input=True):
+    # for k in REQUIRED_SOURCE_KEYS:
+    #   for d in documents:
+    #     assert k in d
     try:
       self._sources[collection_name].extend(documents)
     except KeyError:
@@ -53,7 +57,7 @@ class LocalDocumentStore:
     '''TODO: Parameters for early-filtering. This should be the source for candidate generation -
     if we know the user doesn't like certain broad categories of content, this would be a logical
     place to handle that.'''
-    return chain([source[:5] for source in self._sources.values()])
+    return chain.from_iterable(source[:5] for source in self._sources.values())
 
   def save(self, path):
     # TODO: Support cloud storage.

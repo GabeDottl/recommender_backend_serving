@@ -37,6 +37,7 @@ def ingest():
     debug(f'Ingesting data!!: {content}')
     collection_name = content['collection']
     get_document_store().append_documents(collection_name, content['documents'])
+    get_document_store().save(os.path.join(os.getenv('DATA'), 'recommender'))
     return ''  # Return something so Response is marked successful.
   except Exception as e:
     message = f'Ingested data does not match expected format: [{{doc}}, {{doc}}, ...]. Got: {content}. Error: {e}'
@@ -78,13 +79,16 @@ def posts(page):
 
 
 def _document_to_post(doc):
-  assert type(doc) == dict, doc
+  # assert type(doc) == dict, doc
+  # from common.standard_keys import REQUIRED_SOURCE_KEYS
+  # for k in REQUIRED_SOURCE_KEYS:
+  #   assert k in doc, (k, doc)
   return {
       'title_text': doc['title_text'],
       'secondary_text': doc['secondary_text'],
       'id': doc['id'],  # UID of the post for tracking.
       'url': doc['source_url'],
-      'thumbnail': doc[''],  # URL to thumbnail image.
+      'thumbnail': doc['image_url'],  # URL to thumbnail image.
       # 'media_embed': doc[''],
       'created_utc_sec': doc['created_utc_sec'],
       'liked': 0  # 0 or 1.
