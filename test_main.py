@@ -42,6 +42,23 @@ def test_empty_db(client):
   assert b'This is' in resp.data
 
 
+def test_ingest(client):
+  test_data = _gen_test_data()
+  resp = client.post(
+      '/ingest', json={
+          'collection': 'test2',
+          'documents': test_data
+      })
+  assert resp.status_code == 200
+  store = get_document_store()
+  assert 'sources' in store.collections
+  sources = store.collections['sources']
+  assert 'test2' in sources.documents
+  assert 'test2' in store.collections
+  test2 = store.collections['test2']
+  assert len(test2.documents) == len(test_data)
+
+
 def test_posts(client):
   resp = client.get('/posts')
   assert resp.status_code == 200

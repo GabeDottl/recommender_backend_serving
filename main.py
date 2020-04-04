@@ -37,8 +37,11 @@ def ingest():
     content = request.json
     debug(f'Ingesting data!!: {content}')
     collection_name = content['collection']
-    
-    collection = get_document_store().get_or_create_collection(collection_name)
+    store = get_document_store()
+    if collection_name not in store.collections:
+      sources = store.get_or_create_collection('sources')
+      sources.append_documents([collection_name])
+    collection = store.get_or_create_collection(collection_name)
     collection.append_documents(content['documents'])
     collection.save()
     return ''  # Return something so Response is marked successful.

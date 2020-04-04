@@ -36,12 +36,20 @@ class LocalDocumentStore:
 
   def __init__(self, collections_path):
     self.collections_path = collections_path
-    self._collections = {}
+    self.collections = {}
+
+  # def __contains(self, collection_name):
+  #   return collection_name in self.collections
+
+  # def get_collection(self, name):
+  #   if name in self.collections:
+  #     return self.collections[name]
+  #   raise KeyError('name not in collections')
 
   def get_or_create_collection(self, name):
-    if name in self._collections:
-      return self._collections[name]
-    out = self._collections[name] = Collection.load(
+    if name in self.collections:
+      return self.collections[name]
+    out = self.collections[name] = Collection.load(
         name_to_path(self.collections_path, name))
     return out
 
@@ -49,22 +57,22 @@ class LocalDocumentStore:
     '''TODO: Parameters for early-filtering. This should be the source for candidate generation -
     if we know the user doesn't like certain broad categories of content, this would be a logical
     place to handle that.'''
-    return chain.from_iterable(source for source in self._collections.values())
+    return chain.from_iterable(source for source in self.collections.values())
 
   def get_documents(self, collection_names):
     '''TODO: Parameters for early-filtering. This should be the source for candidate generation -
     if we know the user doesn't like certain broad categories of content, this would be a logical
     place to handle that.'''
     # Only return results for existing collections.
-    names = filter(lambda n: n in self._collections, collection_names)
-    collections = [self._collections[name] for name in names]
+    names = filter(lambda n: n in self.collections, collection_names)
+    collections = [self.collections[name] for name in names]
     return chain.from_iterable(
         collection.documents for collection in collections)
 
   def save(self):
     # TODO: Support cloud storage.
     # path = os.path.join(os.getenv('DATA'), 'recommender')
-    for collection in self._collections.values():
+    for collection in self.collections.values():
       collection.save()
 
   @staticmethod
@@ -76,15 +84,15 @@ class LocalDocumentStore:
       from glob import glob
       for json_file in glob(os.path.join(path, '*json')):
         collection = Collection.load(json_file)
-        out._collections[collection.name] = collection
+        out.collections[collection.name] = collection
         debug(f'collection_name: {collection.name}')
 
     return out
 
   # @cached_fn
   # def get_collection(self):
-  #   if 'user' in self._collections:
-  #     return self._collections['user']
+  #   if 'user' in self.collections:
+  #     return self.collections['user']
   #   path = os.path.join(os.getenv('DATA'), 'recommender', 'user.json')
   #   return Collection.load(path)
 
