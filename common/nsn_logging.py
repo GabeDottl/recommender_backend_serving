@@ -12,18 +12,21 @@ import logging
 import logging.handlers
 from boltons.funcutils import wraps
 import os
+import coloredlogs
 
-# import coloredlogs
-# coloredlogs.install()
+from common.runtime_args import parser, parse_known_args
 
-_logger = logging.getLogger('__default__')
+_logger = logging.getLogger('NSN')
 _formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 _handler = None
 _context_list = []
+_colored_logs = False
 
 _logging_disabled = False
 
+
 def lazy_makedirs(func):
+
   @wraps(func)
   def wrapper(*args, **kwargs):
     path = func(*args, **kwargs)
@@ -32,6 +35,7 @@ def lazy_makedirs(func):
     return path
 
   return wrapper
+
 
 @lazy_makedirs
 def get_index_dir():
@@ -42,6 +46,7 @@ def get_index_dir():
 def get_log_dir():
   return os.path.join(os.getenv('HOME'), '.nsn', 'logs')
 
+
 def set_verbosity(level):
   if level == 'info':
     _logger.setLevel(logging.INFO)
@@ -49,6 +54,10 @@ def set_verbosity(level):
     _logger.setLevel(logging.DEBUG)
   elif level == 'error':
     _logger.setLevel(logging.ERROR)
+  elif level == 'warning':
+    _logger.setLevel(logging.WARNING)
+  if _colored_logs:
+    coloredlogs.install(level=level.upper())
 
 
 # TODO: contextmanager.
@@ -113,6 +122,13 @@ def send_logs_to_stdout():
   _logger.addHandler(_handler)
 
 
+def color_logs():
+  global _colored_logs
+  _colored_logs = True
+  _logger.handlers = []
+  coloredlogs.install()  #logger=_logger)
+
+
 def send_logs_to_nowhere():
   global _logging_disabled
   _logging_disabled = True
@@ -131,17 +147,22 @@ def __get_call_info(function_lookback_count=1):
 
 def maybe_set_verbosity_from_args():
   # TODO: Move parser into a shared file so we're not repeatedly parsing + we can support help...
-  from argparse import ArgumentParser
-  parser = ArgumentParser()
-  parser.add_argument('--verbosity', type=str, nargs='?', default=None)
-  args, _ = parser.parse_known_args()
+  args = parse_known_args()
   if args.verbosity is not None:
-    info(f'Setting verbosity to {args.verbosity}.')
     set_verbosity(args.verbosity)
+    info(f'Set verbosity to {args.verbosity}.')
+    globals()[args.verbosity]('test')
 
 
+parser.add_argument(
+    '--verbosity',
+    type=str,
+    nargs='?',
+    default=None,
+    choices=['info', 'debug', 'warning', 'error'])
 # We set reasonable defaults here, however, best-practice is to set verbosity minimally in __main__.
-send_logs_to_stdout()
+# send_logs_to_stdout()
+color_logs()
 set_verbosity('info')
 # override from args if specified. Call again if overridden in main.
 maybe_set_verbosity_from_args()

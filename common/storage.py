@@ -53,8 +53,9 @@ def save_stream(stream, collection_name):
     if article:
       count += 1
       url = article['source_url']
-      id = url.replace('/', '-').replace(':', '.')
-      article['id'] = id
+      if 'id' not in article:
+        id = url.replace('/', '-').replace(':', '.')
+        article['id'] = id
       push_documents(collection_name, [article])
   info(f'Wrote a total of {count} articles to collection {collection_name}')
 

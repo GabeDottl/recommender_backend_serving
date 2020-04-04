@@ -38,10 +38,11 @@ def get_git_commit():
 
 
 def setup_cloud_profiling(service_name):
+  info(f'Setting up cloud profiler with service_name {service_name}')
+  # TODO: For some reason, importing googlecloudprofiler causes logs to appear twice...
   import googlecloudprofiler
   # Profiler initialization. It starts a daemon thread which continuously
   # collects and uploads profiles. Best done as early as possible.
-  info(f'Setting up cloud profiler with service_name {service_name}')
   try:
     googlecloudprofiler.start(
         service=service_name,

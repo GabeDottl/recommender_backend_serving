@@ -1,35 +1,48 @@
 import atexit
 import os
+import uuid
 from datetime import datetime, timedelta
-
-from flask import Flask, jsonify, request
-from flask_cors import CORS
 from http import HTTPStatus
 
-from common.nsn_logging import debug, error, info, warning, set_verbosity
+from flask import Flask, jsonify, make_response, request, session, g
+from flask_cors import CORS
+from rsa.randnum import randint
 
+from common.nsn_logging import debug, error, info, set_verbosity, warning
+
+from local_document_store import get_document_store
+
+# Flask API cheatsheet: https://s3.us-east-2.amazonaws.com/prettyprinted/flask_cheatsheet.pdf
+# http://flask-cheat-sheet.herokuapp.com/
 app = Flask(__name__)
 # TODO(gdottl): #security configure CORS.
 CORS(app)  # Sets up Access-Control-Allow-Origin
 
-_sources = {}
+# TODO #security Figure out what to do with this... Seems sho
+app.secret_key = b'_5#y2L"F4Qs8z\n\xec]/'
 
 ########################### PRIVATE ENDPOINTS ############################
 # N.b.: THIS IS NOT LOCKED DOWN AT ALL!!!!
 # #security #hack This is allowed mostly for experimentation before committing to a more proper
 # communication mechanism.
 
+# info(f'Wrote {filename}')
+
 
 @app.route('/ingest', methods=['POST'])
 def ingest():
-  content = ''
+  '''json={'collection': collection, 'documents': documents}'''
   try:
     content = request.json
     debug(f'Ingesting data!!: {content}')
+    collection_name = content['collection']
+    get_document_store().append_documents(collection_name, content['documents'])
     return ''  # Return something so Response is marked successful.
   except Exception as e:
     message = f'Ingested data does not match expected format: [{{doc}}, {{doc}}, ...]. Got: {content}. Error: {e}'
     error(message)
+    import traceback
+    traceback.print_exc()
     return message, HTTPStatus.BAD_REQUEST
 
 
@@ -39,24 +52,43 @@ def ingest():
 @app.route('/')
 def index():
   '''
-    this is a root dir of my server
+    This is a root dir of my server
     :return: str
   '''
 
   import socket
   from common.settings import get_git_commit
   version = get_git_commit()
+  info(f'This is {socket.gethostname()} @ {version}!!!!')
   return f'This is {socket.gethostname()} @ {version}!!!!'
 
 
-@app.route('/posts', methods=['GET'])
-def posts():
-  # XXX: list(range(10)) HACK
-  out = list(range(10))  # []
-  for source in _sources:
-    tmp = source.get_posts(10)
-    out += tmp
-  return jsonify(out)
+@app.route('/posts/<page>', methods=['GET'])
+@app.route('/posts', methods=['GET'], defaults={'page': None})
+def posts(page):
+  if 'id' not in session:
+    id = uuid.uuid4()
+    debug(f'No id in session; creating id: {id}')
+    session['id'] = id
+  else:
+    id = session['id']
+    debug(f'Reusing id: {id}')
+
+  return jsonify([_document_to_post(doc) for doc in get_document_store().get_documents()])
+
+
+def _document_to_post(doc):
+  assert type(doc) == dict, doc
+  return {
+      'title_text': doc['title_text'],
+      'secondary_text': doc['secondary_text'],
+      'id': doc['id'],  # UID of the post for tracking.
+      'url': doc['source_url'],
+      'thumbnail': doc[''],  # URL to thumbnail image.
+      # 'media_embed': doc[''],
+      'created_utc_sec': doc['created_utc_sec'],
+      'liked': 0  # 0 or 1.
+  }
 
 
 # POST
@@ -72,7 +104,9 @@ def _main():
   import common
   service_name = os.path.basename(
       os.path.dirname(os.path.dirname(common.__file__)))
-  settings.setup_cloud_profiling(service_name)
+  # settings.setup_cloud_profiling(service_name)
+  # from common.nsn_logging import send_logs_to_stdout
+  # send_logs_to_stdout()
 
 
 def main_waitress(*args):

@@ -4,6 +4,8 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+flake8 = "*"
+pytest = "*"
 
 [packages]
 boltons = "==20.0.0"
@@ -14,6 +16,7 @@ Flask = "==1.1.1"
 Flask-Cors = "==3.0.8"
 google-cloud-profiler = "*"
 waitress = "*"
+coloredlogs = "*"
 
 [requires]
 python_version = "3.6"
