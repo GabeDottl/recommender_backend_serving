@@ -17,6 +17,7 @@ Flask-Cors = "==3.0.8"
 google-cloud-profiler = "*"
 waitress = "*"
 coloredlogs = "*"
+google-cloud-storage = "*"
 
 [requires]
 python_version = "3.6"

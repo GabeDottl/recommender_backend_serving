@@ -78,7 +78,7 @@ class LocalDocumentStore:
   @staticmethod
   def load(path) -> 'LocalDocumentStore':
     import os
-    out = LocalDocumentStore()
+    out = LocalDocumentStore(path)
     debug(f'Loading local data from {path}')
     if os.path.exists(path):
       from glob import glob
