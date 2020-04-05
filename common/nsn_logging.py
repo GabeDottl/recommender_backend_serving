@@ -14,8 +14,6 @@ from boltons.funcutils import wraps
 import os
 import coloredlogs
 
-from common.runtime_args import parser, parse_known_args
-
 _logger = logging.getLogger('NSN')
 _formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 _handler = None
@@ -145,24 +143,9 @@ def __get_call_info(function_lookback_count=1):
   return filename, func, lineno
 
 
-def maybe_set_verbosity_from_args():
-  # TODO: Move parser into a shared file so we're not repeatedly parsing + we can support help...
-  args = parse_known_args()
-  if args.verbosity is not None:
-    set_verbosity(args.verbosity)
-    info(f'Set verbosity to {args.verbosity}.')
-    globals()[args.verbosity]('test')
-
-
-parser.add_argument(
-    '--verbosity',
-    type=str,
-    nargs='?',
-    default=None,
-    choices=['info', 'debug', 'warning', 'error'])
 # We set reasonable defaults here, however, best-practice is to set verbosity minimally in __main__.
 # send_logs_to_stdout()
 color_logs()
 set_verbosity('info')
 # override from args if specified. Call again if overridden in main.
-maybe_set_verbosity_from_args()
+# maybe_set_verbosity_from_args()

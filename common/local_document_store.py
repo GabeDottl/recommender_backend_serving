@@ -14,39 +14,31 @@ import json
 
 from itertools import chain
 
-from common.runtime_args import parser, parse_known_args
-from common.utils import cached_fn
-from common.nsn_logging import debug, error, info
-from common.standard_keys import REQUIRED_SOURCE_KEYS
-
-parser.add_argument('--local-data', action='store_true', dest='local_data')
+from .utils import cached_fn
+from .nsn_logging import debug, error, info
+from .standard_keys import REQUIRED_SOURCE_KEYS
+from . import document_store
 
 
-@cached_fn
-def get_document_store():
-  args = parse_known_args()
-  path = os.path.join(os.getenv('DATA'), 'recommender')
-  if args.local_data:
-    return LocalDocumentStore.load(path)
+# @cached_fn
+# def get_document_store():
+#   path = os.path.join(os.getenv('DATA'), 'recommender')
+#   if args.local_data:
+#     return LocalDocumentStore.load(path)
 
-  return LocalDocumentStore(path)
+#   return LocalDocumentStore(path)
 
 
-class LocalDocumentStore:
+class LocalDocumentStore(document_store.DocumentStore):
 
   def __init__(self, collections_path):
     self.collections_path = collections_path
     self.collections = {}
 
-  # def __contains(self, collection_name):
-  #   return collection_name in self.collections
+  def has_collection(self, collection_name):
+    return collection_name in self.collections
 
-  # def get_collection(self, name):
-  #   if name in self.collections:
-  #     return self.collections[name]
-  #   raise KeyError('name not in collections')
-
-  def get_or_create_collection(self, name):
+  def get(self, name):
     if name in self.collections:
       return self.collections[name]
     out = self.collections[name] = Collection.load(
@@ -89,23 +81,15 @@ class LocalDocumentStore:
 
     return out
 
-  # @cached_fn
-  # def get_collection(self):
-  #   if 'user' in self.collections:
-  #     return self.collections['user']
-  #   path = os.path.join(os.getenv('DATA'), 'recommender', 'user.json')
-  #   return Collection.load(path)
-
 
 def path_to_name(path) -> str:
   return os.path.splitext(os.path.basename(path))[0]
-
 
 def name_to_path(base_path, name) -> str:
   return f'{base_path}/{name}.json'
 
 
-class Collection:
+class LocalCollection(document_store.Collection):
 
   def __init__(self, path):
     self.path = path
@@ -137,14 +121,5 @@ class Collection:
     return out
 
   def save(self):
-    # filename = os.path.join(path, f'{self.name}.json')
     with open(self.path, 'w') as f:
       json.dump(self.documents, f)
-
-
-# def get_user_collection():
-#   path = os.path.join(os.getenv('DATA'), 'recommender', 'sources.json')
-#   try:
-#     return Collection.load(path)
-#   except FileNotFoundError:
-#     return Collection(path)

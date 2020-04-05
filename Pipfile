@@ -18,6 +18,7 @@ google-cloud-profiler = "*"
 waitress = "*"
 coloredlogs = "*"
 google-cloud-storage = "*"
+dependency-injector = "*"
 
 [requires]
 python_version = "3.6"

@@ -10,8 +10,7 @@ from flask_cors import CORS
 from rsa.randnum import randint
 
 from common.nsn_logging import debug, error, info, set_verbosity, warning
-
-from local_document_store import get_document_store
+from common import common_container
 
 # Flask API cheatsheet: https://s3.us-east-2.amazonaws.com/prettyprinted/flask_cheatsheet.pdf
 # http://flask-cheat-sheet.herokuapp.com/
@@ -21,6 +20,7 @@ CORS(app)  # Sets up Access-Control-Allow-Origin
 
 # TODO #security Figure out what to do with this... Seems sho
 app.secret_key = b'_5#y2L"F4Qs8z\n\xec]/'
+_container = None
 
 ########################### PRIVATE ENDPOINTS ############################
 # N.b.: THIS IS NOT LOCKED DOWN AT ALL!!!!
@@ -37,11 +37,11 @@ def ingest():
     content = request.json
     debug(f'Ingesting data!!: {content}')
     collection_name = content['collection']
-    store = get_document_store()
-    if collection_name not in store.collections:
-      sources = store.get_or_create_collection('sources')
+    store = _container.document_store()
+    if not store.has_collection(collection_name):
+      sources = store.get_collection('sources')
       sources.append_documents([collection_name])
-    collection = store.get_or_create_collection(collection_name)
+    collection = store.get_collection(collection_name)
     collection.append_documents(content['documents'])
     collection.save()
     return ''  # Return something so Response is marked successful.
@@ -81,9 +81,9 @@ def posts(page):
     id = session['id']
     debug(f'Reusing id: {id}')
 
-  user_collection = get_document_store().get_or_create_collection('user')
+  user_collection = get_document_store().get_collection('user')
   sent_set = set(user_collection.documents)
-  sources = get_document_store().get_or_create_collection('sources').documents
+  sources = get_document_store().get_collection('sources').documents
   documents = list(
       islice(
           filter(lambda d: d['id'] not in sent_set,
@@ -121,13 +121,12 @@ def liked():
 
 
 def _main():
-  from common import settings
-  import common
-  service_name = os.path.basename(
-      os.path.dirname(os.path.dirname(common.__file__)))
-  # settings.setup_cloud_profiling(service_name)
-  # from common.nsn_logging import send_logs_to_stdout
-  # send_logs_to_stdout()
+  global _container
+  _container = common_container.arg_container()
+
+def _debug_app(*args):
+  _main()
+  app.run(host="0.0.0.0", port=5000)
 
 
 def main_waitress(*args):
