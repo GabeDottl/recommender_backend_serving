@@ -13,7 +13,9 @@ import os
 from .utils import cached_fn
 from .settings import is_gce
 from .nsn_logging import info, debug, error, warning
-from .serving_api import push_documents
+# Note: In order for tests to WAI, we cannot import push_documents directly here:
+from . import serving_api
+# TODO: Replace this dependency injection.
 
 
 class _Storage:
@@ -40,21 +42,13 @@ class _Storage:
     return firestore.client()
 
 
-# @cached_fn
-# def db():
-#   info(f'Initializing firestore.')
-#   return _Storage().db
-
-
 def save_stream(stream, collection_name):
-  # c = db().collection(collection_name)
   count = 0
   for article in stream:
     if article:
       count += 1
-      url = article['source_url']
-      if 'id' not in article:
-        id = url.replace('/', '-').replace(':', '.')
-        article['id'] = id
-      push_documents(collection_name, [article])
+      serving_api.push_documents(collection_name, [article])
   info(f'Wrote a total of {count} articles to collection {collection_name}')
+
+def save_documents(collection_name, documents):
+  pass

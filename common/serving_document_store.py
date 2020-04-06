@@ -13,9 +13,10 @@ class ServingDocumentStore(DocumentStore):
     return ServingCollection(self.remote_address, name)
 
 class ServingCollection(Collection):
-  def __init__(self, remote_address):
+  def __init__(self, remote_address, name):
     self.remote_address = remote_address
+    self.name = name
 
   @request_wrapper
   def append_documents(self, documents):
-    return requests.post(self.remote_address, json={'collection': self.collection, 'documents': documents})
+    return requests.post(self.remote_address, json={'collection': self.name, 'documents': documents})
