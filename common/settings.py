@@ -22,19 +22,7 @@ from .utils import cached_fn
 #   info(f'Logging configured. Project at: {get_git_commit()}')
 
 
-@cached_fn
-def get_git_commit():
-  import subprocess
-  try:
-    # Need to decode (binary returned) and drop new-lines at the end.
-    # These functions turn out to be pretty cheap to run - ~10ms.
-    commit_hash = subprocess.check_output(
-        ['git', 'rev-parse', '--short', 'HEAD']).decode()[:-1]
-    return subprocess.check_output(['git', 'show-branch',
-                                    commit_hash]).decode()[:-1]
-  except Exception as e:
-    error(f'Failed to get git hash; {e}')
-  return 'Unknown commit'
+
 
 
 def setup_cloud_profiling(service_name):

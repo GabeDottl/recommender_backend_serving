@@ -1,10 +1,12 @@
 import os
 from dependency_injector import containers, providers
 from argparse import ArgumentParser
+
 from google.cloud import error_reporting
 
 from .local_document_store import LocalDocumentStore
 from .serving_document_store import ServingDocumentStore
+from .cloud_storage_document_store import CloudStorageDocumentStore
 from . import nsn_logging
 from .nsn_logging import info, warning, error, debug
 
@@ -22,9 +24,12 @@ def _dynamic_container(config: providers.Configuration):
                                                  config.data_dir)
   out.serving_document_store = providers.Singleton(
       ServingDocumentStore, config.serving_append_endpoint, out.error_reporter)
+  out.cloud_storage_document_store = providers.Singleton(
+      CloudStorageDocumentStore, config.bucket_name)
   out.document_store = out.local_document_store
   print(config.local())
   return out
+
 
 
 class NoOpErrorReporter:
@@ -53,7 +58,6 @@ def arg_container(force_local=False):
   config['local'] = config['local'] or force_local
   if config['local']:
     config['serving_address'] = _local_address()
-    
   _apply_secondary_config(config)
   nsn_logging.set_verbosity(config['verbosity'])
   provider_config = providers.Configuration('config')
@@ -63,7 +67,9 @@ def arg_container(force_local=False):
 
 def _apply_secondary_config(config):
   '''Applies configuration values which are directly dependent on earlier ones.'''
+
   config['serving_append_endpoint'] = f'{config["serving_address"]}/ingest'
+  nsn_logging.set_verbosity(config['verbosity'])
 
 
 def _default_config():
@@ -71,6 +77,8 @@ def _default_config():
   return {
       'serving_address':
           _external_static_ip(),
+      'project_id':
+          'recommender-270613',
       'is_gce':
           is_gce,
       'version':
@@ -83,7 +91,9 @@ def _default_config():
       'local_data':
           False,
       'service_name':
-          _get_service_name()
+          _get_service_name(),
+      'bucket_name':
+          'recommender_collections'
   }
 
 

@@ -5,6 +5,7 @@ import tempfile
 import pytest
 
 import main
+from dependency_injector import 0
 
 from common.standard_keys import CLIENT_POST_KEYS
 from common.local_document_store import LocalDocumentStore
@@ -29,14 +30,18 @@ def client():
 
   with main.app.test_client() as client:
     # Setup document store with some basic data.
-    os.makedirs('tmp')
-    store = LocalDocumentStore('./tmp')
+    
     sources = store.get_or_create_collection('sources')
     sources.append_documents(['test'])
     test = store.get_or_create_collection('test')
     test.append_documents(_gen_test_data())
     yield client
+    os.makedirs('tmp')
+    store = LocalDocumentStore('./tmp')
     shutils.rmtree('tmp')
+
+def _create_test_container():
+
 
 
 def test_root(client):
