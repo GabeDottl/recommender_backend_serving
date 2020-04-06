@@ -1,4 +1,5 @@
 import os
+import shutil
 import tempfile
 
 import pytest
@@ -6,7 +7,7 @@ import pytest
 import main
 
 from common.standard_keys import CLIENT_POST_KEYS
-from local_document_store import get_document_store
+from common.local_document_store import LocalDocumentStore
 
 
 def _gen_test_data():
@@ -28,15 +29,17 @@ def client():
 
   with main.app.test_client() as client:
     # Setup document store with some basic data.
-    store = get_document_store()
+    os.makedirs('tmp')
+    store = LocalDocumentStore('./tmp')
     sources = store.get_or_create_collection('sources')
     sources.append_documents(['test'])
     test = store.get_or_create_collection('test')
     test.append_documents(_gen_test_data())
     yield client
+    shutils.rmtree('tmp')
 
 
-def test_empty_db(client):
+def test_root(client):
   """Start with a blank database."""
   resp = client.get('/')
   assert b'This is' in resp.data

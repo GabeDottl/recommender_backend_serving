@@ -13,6 +13,7 @@ import logging.handlers
 from boltons.funcutils import wraps
 import os
 import coloredlogs
+print(f'Importing {__file__}')
 
 _logger = logging.getLogger('NSN')
 _formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')

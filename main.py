@@ -37,13 +37,13 @@ def ingest():
     content = request.json
     debug(f'Ingesting data!!: {content}')
     collection_name = content['collection']
-    store = _container.document_store()
-    if not store.has_collection(collection_name):
-      sources = store.get_collection('sources')
-      sources.append_documents([collection_name])
+    store = _container.cloud_storage_document_store()
+    # if not store.has_collection(collection_name):
+    #   sources = store.get_collection('sources')
+    #   sources.append_documents([collection_name])
     collection = store.get_collection(collection_name)
     collection.append_documents(content['documents'])
-    collection.save()
+    # collection.save()
     return ''  # Return something so Response is marked successful.
   except Exception as e:
     message = f'Ingested data does not match expected format: [{{doc}}, {{doc}}, ...]. Got: {content}. Error: {e}'

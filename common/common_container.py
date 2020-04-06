@@ -4,6 +4,7 @@ from argparse import ArgumentParser
 
 from .local_document_store import LocalDocumentStore
 from .serving_document_store import ServingDocumentStore
+from .cloud_storage_document_store import CloudStorageDocumentStore
 from . import nsn_logging
 from .nsn_logging import info, warning, error, debug
 
@@ -15,7 +16,10 @@ class BaseContainer(containers.DeclarativeContainer):
 
   serving_document_store = providers.Singleton(ServingDocumentStore, config.serving_append_endpoint)
 
+  cloud_storage_document_store = providers.Singleton(CloudStorageDocumentStore, config.bucket_name)
+
   document_store = local_document_store
+
 
 def arg_container():
   config = _default_config().copy()
@@ -29,8 +33,8 @@ def arg_container():
     choices=['info', 'debug', 'warning', 'error'])
   parser.add_argument('--local-data', action='store_true', dest='local_data')
   args, _ = parser.parse_known_args()
-  nsn_logging.set_verbosity(config['verbosity'])
   config.update(vars(args))
+  info(config['verbosity'])
   if args.local:
     config['serving_address'] = _local_address()
   _apply_secondary_config(config)
@@ -38,17 +42,21 @@ def arg_container():
 
 def _apply_secondary_config(config):
   '''Applies configuration values which are directly dependent on earlier ones.'''
+  
   config['serving_append_endpoint'] = f'{config["serving_address"]}/ingest'
+  nsn_logging.set_verbosity(config['verbosity'])
 
 def _default_config():
   is_gce = _is_gce()
   return {
     'serving_address': _external_static_ip(),
+    'project_id': 'recommender-270613',
     'is_gce': is_gce,
     'version': _get_git_commit(),
     'verbosity': 'info',
     'data_dir': './data' if is_gce else os.path.join(os.getenv('DATA'), 'recommender'),
-    'local_data': False
+    'local_data': False,
+    'bucket_name': 'recommender_collections'
   }
 
 def _get_git_commit():

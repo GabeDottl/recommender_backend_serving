@@ -19,16 +19,6 @@ from .nsn_logging import debug, error, info
 from .standard_keys import REQUIRED_SOURCE_KEYS
 from . import document_store
 
-
-# @cached_fn
-# def get_document_store():
-#   path = os.path.join(os.getenv('DATA'), 'recommender')
-#   if args.local_data:
-#     return LocalDocumentStore.load(path)
-
-#   return LocalDocumentStore(path)
-
-
 class LocalDocumentStore(document_store.DocumentStore):
 
   def __init__(self, collections_path):
