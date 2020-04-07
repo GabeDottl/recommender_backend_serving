@@ -93,7 +93,7 @@ def posts(page):
   user_collection.append_documents([d['id'] for d in documents])
 
   if len(documents) == 0:
-    return make_response('', 500)
+    return make_response('500: No posts', 500)
   return jsonify([_document_to_post(doc) for doc in documents])
 
 
