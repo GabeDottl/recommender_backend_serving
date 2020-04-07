@@ -1,15 +1,11 @@
-import atexit
-import os
 import uuid
-from datetime import datetime, timedelta
 from http import HTTPStatus
 from itertools import islice
 
-from flask import Flask, jsonify, make_response, request, session, g
+from flask import Flask, jsonify, make_response, request, session
 from flask_cors import CORS
-from rsa.randnum import randint
 
-from common.nsn_logging import debug, error, info, set_verbosity, warning
+from common.nsn_logging import debug, error, info, warning
 from common import common_container
 
 # Flask API cheatsheet: https://s3.us-east-2.amazonaws.com/prettyprinted/flask_cheatsheet.pdf
@@ -22,12 +18,22 @@ CORS(app)  # Sets up Access-Control-Allow-Origin
 app.secret_key = b'_5#y2L"F4Qs8z\n\xec]/'
 _container = None
 
-########################### PRIVATE ENDPOINTS ############################
+# ########################## PRIVATE ENDPOINTS ############################
 # N.b.: THIS IS NOT LOCKED DOWN AT ALL!!!!
 # #security #hack This is allowed mostly for experimentation before committing to a more proper
 # communication mechanism.
 
-# info(f'Wrote {filename}')
+
+def _write_to_long_term_storage(collection_name, documents):
+  store = _container.cloud_storage_document_store()
+  collection = store.get_collection(collection_name)
+  collection.append_documents(documents)
+
+
+def _strip_and_save_for_serving(collection_name, documents):
+  posts = [_document_to_post(d) for d in documents]
+  _container.sources_document_store().get_collection(
+      collection_name).append_documents(posts)
 
 
 @app.route('/ingest', methods=['POST'])
@@ -37,23 +43,20 @@ def ingest():
     content = request.json
     debug(f'Ingesting data!!: {content}')
     collection_name = content['collection']
-    store = _container.cloud_storage_document_store()
-    # if not store.has_collection(collection_name):
-    #   sources = store.get_collection('sources')
-    #   sources.append_documents([collection_name])
-    collection = store.get_collection(collection_name)
-    collection.append_documents(content['documents'])
-    # collection.save()
+    documents = content['documents']
+    _write_to_long_term_storage(collection_name, documents)
+    _strip_and_save_for_serving(collection_name, documents)
     return ''  # Return something so Response is marked successful.
   except Exception as e:
     message = f'Ingested data does not match expected format: [{{doc}}, {{doc}}, ...]. Got: {content}. Error: {e}'
     error(message)
+    _container.error_reporter().report_exception()
     import traceback
     traceback.print_exc()
     return message, HTTPStatus.BAD_REQUEST
 
 
-########################### PUBLIC ENDPOINTS ############################
+# ########################## PUBLIC ENDPOINTS ############################
 
 
 @app.route('/')
@@ -64,8 +67,7 @@ def index():
   '''
 
   import socket
-  from common.settings import get_git_commit
-  version = get_git_commit()
+  version = _container.config.version()
   info(f'This is {socket.gethostname()} @ {version}!!!!')
   return f'This is {socket.gethostname()} @ {version}!!!!'
 
@@ -81,12 +83,13 @@ def posts(page):
     id = session['id']
     debug(f'Reusing id: {id}')
 
-  user_collection = get_document_store().get_collection('user')
+  user_collection = _container.users_document_store().get_collection('user')
   sent_set = set(user_collection.documents)
-  sources = get_document_store().get_collection('sources').documents
+  # sources = _container.sources_document_sti.get_collection('sources').documents
   documents = list(
-      islice(filter(lambda d: d['id'] not in sent_set,
-                    get_document_store().get_documents(sources)), 10))
+      islice(
+          filter(lambda d: d['id'] not in sent_set,
+                 _container.sources_document_store().get_all_documents()), 10))
   user_collection.append_documents([d['id'] for d in documents])
 
   if len(documents) == 0:
@@ -122,6 +125,9 @@ def liked():
 def _main():
   global _container
   _container = common_container.arg_container()
+  # TODO: Initialize local store?
+  # if _container.config.local_data():
+  #   info(f'Loading local data for serving')
 
 
 def _debug_app(*args):

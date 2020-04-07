@@ -19,6 +19,7 @@ waitress = "*"
 coloredlogs = "*"
 google-cloud-storage = "*"
 dependency-injector = "*"
+google-cloud-error-reporting = "*"
 
 [requires]
 python_version = "3.6"

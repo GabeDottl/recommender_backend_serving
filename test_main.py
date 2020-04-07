@@ -1,14 +1,12 @@
 import os
 import shutil
-import tempfile
 
 import pytest
 
 import main
 
 from common.standard_keys import CLIENT_POST_KEYS
-from common.local_document_store import LocalDocumentStore
-
+from common import common_container
 
 def _gen_test_data():
   return [{
@@ -29,15 +27,22 @@ def client():
 
   with main.app.test_client() as client:
     # Setup document store with some basic data.
+    # TODO: encase the tmp_dir creation and destruction in wrapper.
+    tmp_dir = os.path.abspath('./tmp') # Abspath incase working dir changes.
+    if os.path.exists(tmp_dir):
+      shutil.rmtree(tmp_dir)
 
-    sources = store.get_or_create_collection('sources')
-    sources.append_documents(['test'])
-    test = store.get_or_create_collection('test')
+    os.makedirs(tmp_dir)
+    main._container = common_container.arg_container(overrides={'data_dir': tmp_dir}, test=True)
+    # sources = store.get_or_create_collection('sources')
+    # sources.append_documents(['test'])
+    test = main._container.sources_document_store().get_collection('test')
     test.append_documents(_gen_test_data())
     yield client
-    os.makedirs('tmp')
-    store = LocalDocumentStore('./tmp')
-    shutils.rmtree('tmp')
+    print(f'Clearing {tmp_dir}')
+    shutil.rmtree(tmp_dir)
+    # store = LocalDocumentStore('./tmp')
+    # shutils.rmtree('tmp')
 
 
 def test_root(client):
@@ -50,13 +55,10 @@ def test_ingest(client):
   test_data = _gen_test_data()
   resp = client.post('/ingest', json={'collection': 'test2', 'documents': test_data})
   assert resp.status_code == 200
-  store = get_document_store()
-  assert 'sources' in store.collections
-  sources = store.collections['sources']
-  assert 'test2' in sources.documents
-  assert 'test2' in store.collections
-  test2 = store.collections['test2']
-  assert len(test2.documents) == len(test_data)
+  sources_store = main._container.sources_document_store()
+  assert sources_store.has_collection('test2')
+  test2 = sources_store.get_collection('test2')
+  assert len(list(test2.get_documents())) == len(test_data)
 
 
 def test_posts(client):
@@ -64,7 +66,7 @@ def test_posts(client):
   assert resp.status_code == 200
   assert isinstance(resp.json, list)
   assert len(resp.json) == 10
-  user_collection = get_document_store().get_or_create_collection('user')
+  user_collection = main._container.users_document_store().get_collection('user')
   assert len(user_collection.documents) == 10
   ids = [d['id'] for d in resp.json]
   _check_format(resp.json)
@@ -72,7 +74,7 @@ def test_posts(client):
   resp = client.get('/posts')
   assert isinstance(resp.json, list)
   assert len(resp.json) == 10
-  user_collection = get_document_store().get_or_create_collection('user')
+  user_collection = main._container.users_document_store().get_collection('user')
   assert len(user_collection.documents) == 20
   _check_format(resp.json)
   ids.extend([d['id'] for d in resp.json])

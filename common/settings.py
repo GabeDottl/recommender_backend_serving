@@ -1,5 +1,4 @@
-from .nsn_logging import debug, error, info, warning
-from .utils import cached_fn
+from .nsn_logging import error, info
 
 # def setup_cloud_logging():
 #   import google.cloud.logging
@@ -21,7 +20,10 @@ from .utils import cached_fn
 #   info(f'Logging configured. Project at: {get_git_commit()}')
 
 
-def setup_cloud_profiling(service_name):
+def setup_cloud_profiling(container):
+
+  service_name = container.config.service_name()
+  version = container.config.version()
   info(f'Setting up cloud profiler with service_name {service_name}')
   # TODO: For some reason, importing googlecloudprofiler causes logs to appear twice...
   import googlecloudprofiler
@@ -30,7 +32,7 @@ def setup_cloud_profiling(service_name):
   try:
     googlecloudprofiler.start(
         service=service_name,
-        service_version=get_git_commit(),
+        service_version=version,
         # verbose is the logging level. 0-error, 1-warning, 2-info,
         # 3-debug. It defaults to 0 (error) if not set.
         verbose=0,

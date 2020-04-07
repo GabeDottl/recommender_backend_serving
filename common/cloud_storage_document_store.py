@@ -1,11 +1,10 @@
 from google.cloud import storage
-from google.oauth2 import service_account
 import json
 import os.path
 from datetime import datetime
 
 from .document_store import DocumentStore, Collection
-from .nsn_logging import debug, info, error, warning
+from .nsn_logging import debug
 
 
 class CloudStorageDocumentStore(DocumentStore):
