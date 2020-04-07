@@ -35,8 +35,7 @@ class _Storage:
     # Use a service account
 
     cred = credentials.Certificate(
-        os.path.join(
-            os.getenv('CONFIG'), 'recommender_firestore_service_acct.json'))
+        os.path.join(os.getenv('CONFIG'), 'recommender_firestore_service_acct.json'))
     firebase_admin.initialize_app(cred)
 
     return firestore.client()
@@ -49,6 +48,7 @@ def save_stream(stream, collection_name):
       count += 1
       serving_api.push_documents(collection_name, [article])
   info(f'Wrote a total of {count} articles to collection {collection_name}')
+
 
 def save_documents(collection_name, documents):
   pass

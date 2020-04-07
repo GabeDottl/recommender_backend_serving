@@ -24,7 +24,6 @@ _logging_disabled = False
 
 
 def lazy_makedirs(func):
-
   @wraps(func)
   def wrapper(*args, **kwargs):
     path = func(*args, **kwargs)

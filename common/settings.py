@@ -1,7 +1,6 @@
 from .nsn_logging import debug, error, info, warning
 from .utils import cached_fn
 
-
 # def setup_cloud_logging():
 #   import google.cloud.logging
 #   from google.oauth2 import service_account
@@ -20,9 +19,6 @@ from .utils import cached_fn
 #   error('Final log to console! Moving to cloud logger')
 #   client.setup_logging()
 #   info(f'Logging configured. Project at: {get_git_commit()}')
-
-
-
 
 
 def setup_cloud_profiling(service_name):
@@ -50,7 +46,6 @@ def setup_cloud_profiling(service_name):
 #   from argparse import ArgumentParser
 #   parser = ArgumentParser()
 #   args, _ = parser.parse_known_args()
-
 
 #   # NOTE / WARNING: This function is cached without it's argument - so whoever calls this first
 #   # dictates the value of |localhost|. This is a helpful hack for allowing interactive sessions

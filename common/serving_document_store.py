@@ -8,7 +8,6 @@ from .nsn_logging import debug, error
 
 
 class ServingDocumentStore(DocumentStore):
-
   def __init__(self, remote_address, error_reporter):
     self.remote_address = remote_address
     self.error_reporter = error_reporter
@@ -18,7 +17,6 @@ class ServingDocumentStore(DocumentStore):
 
 
 class ServingCollection(Collection):
-
   def __init__(self, remote_address, error_reporter, name):
     self.remote_address = remote_address
     self.error_reporter = error_reporter
@@ -27,12 +25,7 @@ class ServingCollection(Collection):
   def append_documents(self, documents):
     debug(f'Sending {len(documents)} to {self.remote_address}')
     try:
-      resp = requests.post(
-          self.remote_address,
-          json={
-              'collection': self.name,
-              'documents': documents
-          })
+      resp = requests.post(self.remote_address, json={'collection': self.name, 'documents': documents})
       if resp.status_code != 200:
         message = f'Failed to send {len(documents)} to serving. Error code: {resp.status_code}: {resp.text}'
         error(message)

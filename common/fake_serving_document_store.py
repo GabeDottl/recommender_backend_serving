@@ -4,7 +4,6 @@ from .standard_keys import REQUIRED_SOURCE_KEYS
 
 
 class FakeServingCollection(Collection):
-
   def append_documents(self, documents):
     for doc in documents:
       for k in REQUIRED_SOURCE_KEYS:

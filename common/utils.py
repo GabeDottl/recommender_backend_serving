@@ -3,17 +3,19 @@ from time import time, sleep
 import requests
 from boltons.funcutils import wraps
 from functools import partial
-from boltons.cacheutils import cachedproperty as lazy_property, cached # For exporting.
+from boltons.cacheutils import cachedproperty as lazy_property, cached  # For exporting.
 
 from .nsn_logging import info, debug, error, warning
 
 # _fn_cache = {}
 # cached_fn = cached(cache=_fn_cache)
 
+
 def cached_fn(fn):
   '''A slightly fancy no-arg function cache.'''
   out = None
   run = False
+
   @wraps(fn)
   def wrapper(*args, **kwargs):
     nonlocal out, run
@@ -22,7 +24,9 @@ def cached_fn(fn):
     out = fn(*args, **kwargs)
     run = True
     return out
+
   return wrapper
+
 
 def lazy_makedirs(func):
   @wraps(func)
@@ -49,7 +53,9 @@ def request_wrapper(fn):
     except Exception as e:
       warning(f'{fn.__qualname__}: {e}')
       return None
+
   return wrapper
+
 
 def run_for_at_least_n_sec(fn, sec):
   start = time()

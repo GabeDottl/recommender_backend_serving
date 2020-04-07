@@ -85,9 +85,8 @@ def posts(page):
   sent_set = set(user_collection.documents)
   sources = get_document_store().get_collection('sources').documents
   documents = list(
-      islice(
-          filter(lambda d: d['id'] not in sent_set,
-                 get_document_store().get_documents(sources)), 10))
+      islice(filter(lambda d: d['id'] not in sent_set,
+                    get_document_store().get_documents(sources)), 10))
   user_collection.append_documents([d['id'] for d in documents])
 
   if len(documents) == 0:
@@ -124,16 +123,17 @@ def _main():
   global _container
   _container = common_container.arg_container()
 
+
 def _debug_app(*args):
   _main()
-  app.run(host="0.0.0.0", port=5000)
+  app.run(host='0.0.0.0', port=5000)
 
 
 def main_waitress(*args):
   _main()
   # #performance #security Migrate to gunicorn? https://quintagroup.com/cms/python/web-server
   from waitress import serve
-  serve(app, host="0.0.0.0", port=5000)
+  serve(app, host='0.0.0.0', port=5000)
 
 
 if __name__ == '__main__':

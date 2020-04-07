@@ -19,8 +19,8 @@ from .nsn_logging import debug, error, info
 from .standard_keys import REQUIRED_SOURCE_KEYS
 from . import document_store
 
-class LocalDocumentStore(document_store.DocumentStore):
 
+class LocalDocumentStore(document_store.DocumentStore):
   def __init__(self, collections_path):
     self.collections_path = collections_path
     self.collections = {}
@@ -31,8 +31,7 @@ class LocalDocumentStore(document_store.DocumentStore):
   def get(self, name):
     if name in self.collections:
       return self.collections[name]
-    out = self.collections[name] = Collection.load(
-        name_to_path(self.collections_path, name))
+    out = self.collections[name] = Collection.load(name_to_path(self.collections_path, name))
     return out
 
   def get_all_documents(self):
@@ -48,8 +47,7 @@ class LocalDocumentStore(document_store.DocumentStore):
     # Only return results for existing collections.
     names = filter(lambda n: n in self.collections, collection_names)
     collections = [self.collections[name] for name in names]
-    return chain.from_iterable(
-        collection.documents for collection in collections)
+    return chain.from_iterable(collection.documents for collection in collections)
 
   def save(self):
     # TODO: Support cloud storage.
@@ -75,12 +73,12 @@ class LocalDocumentStore(document_store.DocumentStore):
 def path_to_name(path) -> str:
   return os.path.splitext(os.path.basename(path))[0]
 
+
 def name_to_path(base_path, name) -> str:
   return f'{base_path}/{name}.json'
 
 
 class LocalCollection(document_store.Collection):
-
   def __init__(self, path):
     self.path = path
     self.name = path_to_name(path)
