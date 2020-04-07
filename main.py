@@ -32,8 +32,7 @@ def _write_to_long_term_storage(collection_name, documents):
 
 def _strip_and_save_for_serving(collection_name, documents):
   posts = [_document_to_post(d) for d in documents]
-  _container.sources_document_store().get_collection(
-      collection_name).append_documents(posts)
+  _container.sources_document_store().get_collection(collection_name).append_documents(posts)
 
 
 @app.route('/ingest', methods=['POST'])

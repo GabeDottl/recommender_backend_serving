@@ -19,8 +19,10 @@ def _test_container(config: providers.Configuration):
   out.config = config
   out.error_reporter = providers.Singleton(NoOpErrorReporter)
   # out.local_document_store = providers.Singleton(LocalDocumentStore.load, config.data_dir)
-  out.sources_document_store = providers.Singleton(LocalDocumentStore.load, os.path.join(config.data_dir(), 'sources'))
-  out.users_document_store = providers.Singleton(LocalDocumentStore.load, os.path.join(config.data_dir(), 'users'))
+  out.sources_document_store = providers.Singleton(LocalDocumentStore.load,
+                                                   os.path.join(config.data_dir(), 'sources'))
+  out.users_document_store = providers.Singleton(LocalDocumentStore.load,
+                                                 os.path.join(config.data_dir(), 'users'))
   out.serving_document_store = providers.Singleton(FakeServingDocumentStore)
   # DocumentStore == NoopDocumentStore
   out.cloud_storage_document_store = providers.Singleton(NoopDocumentStore)
@@ -34,10 +36,12 @@ def _dynamic_container(config: providers.Configuration):
   if not config.is_gce():
     out.error_reporter = providers.Singleton(NoOpErrorReporter)
   else:
-      out.error_reporter = providers.Singleton(error_reporting.Client, service=config.service_name)
+    out.error_reporter = providers.Singleton(error_reporting.Client, service=config.service_name)
 
-  out.sources_document_store = providers.Singleton(LocalDocumentStore.load, os.path.join(config.data_dir(), 'sources'))
-  out.users_document_store = providers.Singleton(LocalDocumentStore.load, os.path.join(config.data_dir(), 'users'))
+  out.sources_document_store = providers.Singleton(LocalDocumentStore.load,
+                                                   os.path.join(config.data_dir(), 'sources'))
+  out.users_document_store = providers.Singleton(LocalDocumentStore.load,
+                                                 os.path.join(config.data_dir(), 'users'))
   out.serving_document_store = providers.Singleton(ServingDocumentStore, config.serving_append_endpoint,
                                                    out.error_reporter)
   out.cloud_storage_document_store = providers.Singleton(CloudStorageDocumentStore, config.bucket_name)
@@ -56,7 +60,7 @@ class NoOpErrorReporter:
 
 def arg_container(*, overrides={}, test=False):
   if test:
-    assert 'data_dir' in overrides, "data_dir must be provided by tests so they can perform cleanup.  "
+    assert 'data_dir' in overrides, 'data_dir must be provided by tests so they can perform cleanup.  '
   config = _default_config().copy()
   parser = ArgumentParser()
   parser.add_argument('--local', action='store_true')
@@ -75,7 +79,7 @@ def arg_container(*, overrides={}, test=False):
   # if test:
   #   config['data_dir']
   # config['local'] = config['local']
-  
+
   if config['local'] and 'serving_address' not in overrides:
     config['serving_address'] = _local_address()
   _apply_secondary_config(config)

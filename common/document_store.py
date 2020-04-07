@@ -1,8 +1,8 @@
 from typing import List
 from .nsn_logging import debug
 
-class DocumentStore:
 
+class DocumentStore:
   def get_collection(self, name) -> 'Collection':
     raise Exception(f'get_collection not implemented')
 
@@ -14,7 +14,6 @@ class DocumentStore:
 
 
 class Collection:
-
   def append_documents(self, documents):
     raise Exception(f'append_documents not implemented')
 
@@ -22,9 +21,7 @@ class Collection:
     raise Exception(f'get_documents not implemented')
 
 
-
 class NoopDocumentStore:
-
   def get_collection(self, name) -> 'Collection':
     debug(f'Noop: get_collection')
     return NoopCollection()
@@ -35,7 +32,6 @@ class NoopDocumentStore:
 
 
 class NoopCollection:
-
   def append_documents(self, documents):
     debug(f'Noop: append_documents')
     pass

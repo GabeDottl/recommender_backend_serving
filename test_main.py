@@ -8,6 +8,7 @@ import main
 from common.standard_keys import CLIENT_POST_KEYS
 from common import common_container
 
+
 def _gen_test_data():
   return [{
       'id': str(i),
@@ -28,7 +29,7 @@ def client():
   with main.app.test_client() as client:
     # Setup document store with some basic data.
     # TODO: encase the tmp_dir creation and destruction in wrapper.
-    tmp_dir = os.path.abspath('./tmp') # Abspath incase working dir changes.
+    tmp_dir = os.path.abspath('./tmp')  # Abspath incase working dir changes.
     if os.path.exists(tmp_dir):
       shutil.rmtree(tmp_dir)
 
