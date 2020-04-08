@@ -24,7 +24,11 @@ _container = None
 # communication mechanism.
 
 
-def _write_to_long_term_storage(collection_name, documents):
+def _maybe_write_to_long_term_storage(collection_name, documents):
+  if _container.config.local():
+    # TODO log-once
+    info(f'Configured for local - not logging to cloud storage.')
+    return
   store = _container.cloud_storage_document_store()
   collection = store.get_collection(collection_name)
   collection.append_documents(documents)
@@ -32,7 +36,11 @@ def _write_to_long_term_storage(collection_name, documents):
 
 def _strip_and_save_for_serving(collection_name, documents):
   posts = [_document_to_post(d) for d in documents]
-  _container.sources_document_store().get_collection(collection_name).append_documents(posts)
+  c = _container.sources_document_store().get_collection(collection_name)
+  c.append_documents(posts)
+  info(f'Saving')
+  c.save()
+
 
 
 @app.route('/ingest', methods=['POST'])
@@ -43,7 +51,7 @@ def ingest():
     debug(f'Ingesting data!!: {content}')
     collection_name = content['collection']
     documents = content['documents']
-    _write_to_long_term_storage(collection_name, documents)
+    _maybe_write_to_long_term_storage(collection_name, documents)
     _strip_and_save_for_serving(collection_name, documents)
     return ''  # Return something so Response is marked successful.
   except Exception as e:
@@ -85,15 +93,15 @@ def posts(page):
   user_collection = _container.users_document_store().get_collection('user')
   sent_set = set(user_collection.documents)
   # sources = _container.sources_document_sti.get_collection('sources').documents
-  documents = list(
+  posts = list(
       islice(
           filter(lambda d: d['id'] not in sent_set,
                  _container.sources_document_store().get_all_documents()), 10))
-  user_collection.append_documents([d['id'] for d in documents])
+  user_collection.append_documents([d['id'] for d in posts])
 
-  if len(documents) == 0:
+  if len(posts) == 0:
     return make_response('500: No posts', 500)
-  return jsonify([_document_to_post(doc) for doc in documents])
+  return jsonify(posts)
 
 
 def _document_to_post(doc):
@@ -105,7 +113,8 @@ def _document_to_post(doc):
       'title_text': doc['title_text'],
       'secondary_text': doc['secondary_text'],
       'id': doc['id'],  # UID of the post for tracking.
-      'url': doc['source_url'],
+      # TODO: Generate URL for content where applicable, e.g. Reddit?
+      'url': doc['source_url'] if 'source_url' in doc else '', # Optional.
       'thumbnail': doc['image_url'],  # URL to thumbnail image.
       # 'media_embed': doc[''],
       'created_utc_sec': doc['created_utc_sec'],

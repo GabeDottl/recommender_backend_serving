@@ -14,13 +14,16 @@ import json
 
 from itertools import chain
 
-from .nsn_logging import debug, error
+from .nsn_logging import debug, error, info
 from . import document_store
 
 
 class LocalDocumentStore(document_store.DocumentStore):
   def __init__(self, collections_path):
     self.collections_path = collections_path
+    if not os.path.exists(collections_path):
+      info(f'Creating {collections_path}')
+      os.makedirs(collections_path)
     self.collections = {}
 
   def has_collection(self, collection_name):
@@ -102,7 +105,7 @@ class LocalCollection(document_store.Collection):
 
   @staticmethod
   def load(path, create_on_fail=True) -> 'Collection':
-    out = LocalCollection(path_to_name(path))
+    out = LocalCollection(path) #path_to_name(path))
     try:
       with open(path, 'r') as f:
         out.documents = json.load(f)
@@ -114,5 +117,6 @@ class LocalCollection(document_store.Collection):
     return out
 
   def save(self):
+    info(f'Saving to {self.path}')
     with open(self.path, 'w') as f:
       json.dump(self.documents, f)
