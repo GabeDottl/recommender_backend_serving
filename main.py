@@ -56,13 +56,13 @@ def ingest():
     documents = content['documents']
     _maybe_write_to_long_term_storage(collection_name, documents)
     _strip_and_save_for_serving(collection_name, documents)
-    # s = _container.cluster_document_store()
-    # for document in documents:
-    #   if 'subbreddit' in document:
-    #     s.get_collection()
-    #     # TODO: Normalize this?
-    #     # Given virtually infinite data - sorta.
-    #     _clusters[['subbreddit']].append(_document_to_post(document))
+    s = _container.cluster_document_store()
+    for document in documents:
+      if 'subbreddit' in document:
+        s.get_collection()
+        # TODO: Normalize this?
+        # Given virtually infinite data - sorta.
+        _clusters[['subbreddit']].append(_document_to_post(document))
     return ''  # Return something so Response is marked successful.
   except Exception as e:
     message = f'Ingested data does not match expected format: [{{doc}}, {{doc}}, ...]. Got: {content}. Error: {e}'
@@ -119,6 +119,7 @@ def _document_to_post(doc):
   # for k in REQUIRED_SOURCE_KEYS:
   #   assert k in doc, (k, doc)
   return {
+      'type': 'POST',
       'title_text': doc['title_text'],
       'secondary_text': doc['secondary_text'],
       'id': doc['id'],  # UID of the post for tracking.

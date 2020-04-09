@@ -18,7 +18,8 @@ def _test_container(config: providers.Configuration):
   out = containers.DynamicContainer()
   out.config = config
   out.error_reporter = providers.Singleton(NoOpErrorReporter)
-  # out.local_document_store = providers.Singleton(LocalDocumentStore.load, config.data_dir)
+  out.cluster_document_store = providers.Singleton(LocalDocumentStore.load,
+                                                   os.path.join(config.data_dir(), 'cluster'))
   out.source_document_store = providers.Singleton(LocalDocumentStore.load,
                                                    os.path.join(config.data_dir(), 'source'))
   out.user_document_store = providers.Singleton(LocalDocumentStore.load,

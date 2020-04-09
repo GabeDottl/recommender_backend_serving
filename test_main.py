@@ -5,7 +5,7 @@ import pytest
 
 import main
 
-from common.standard_keys import CLIENT_POST_KEYS
+from common.standard_keys import CLIENT_POST_KEYS, CLIENT_CLUSTER_KEYS, CLIENT_ITEM_KEYS
 from common import common_container
 
 
@@ -85,8 +85,11 @@ def test_posts(client):
   assert len(set(ids)) == 20
 
 
-def _check_format(docs):
-  for doc in docs:
+def _check_format(client_items):
+  for item in client_items:
     # Check every expected key is present.
-    for k in CLIENT_POST_KEYS:
-      assert k in doc
+    assert all(k in item for k in CLIENT_ITEM_KEYS)
+    if item['type'] == 'POST':
+      assert all(k in item for k in CLIENT_POST_KEYS)
+    if item['type'] == 'CLUSTER':
+      assert all(k in item for k in CLIENT_CLUSTER_KEYS)
