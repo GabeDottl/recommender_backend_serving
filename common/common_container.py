@@ -19,10 +19,10 @@ def _test_container(config: providers.Configuration):
   out.config = config
   out.error_reporter = providers.Singleton(NoOpErrorReporter)
   # out.local_document_store = providers.Singleton(LocalDocumentStore.load, config.data_dir)
-  out.sources_document_store = providers.Singleton(LocalDocumentStore.load,
-                                                   os.path.join(config.data_dir(), 'sources'))
-  out.users_document_store = providers.Singleton(LocalDocumentStore.load,
-                                                 os.path.join(config.data_dir(), 'users'))
+  out.source_document_store = providers.Singleton(LocalDocumentStore.load,
+                                                   os.path.join(config.data_dir(), 'source'))
+  out.user_document_store = providers.Singleton(LocalDocumentStore.load,
+                                                 os.path.join(config.data_dir(), 'user'))
   out.serving_document_store = providers.Singleton(FakeServingDocumentStore)
   # DocumentStore == NoopDocumentStore
   out.cloud_storage_document_store = providers.Singleton(NoopDocumentStore)
@@ -38,10 +38,12 @@ def _dynamic_container(config: providers.Configuration):
   else:
     out.error_reporter = providers.Singleton(error_reporting.Client, service=config.service_name)
 
-  out.sources_document_store = providers.Singleton(LocalDocumentStore.load,
-                                                   os.path.join(config.data_dir(), 'sources'))
-  out.users_document_store = providers.Singleton(LocalDocumentStore.load,
-                                                 os.path.join(config.data_dir(), 'users'))
+  out.source_document_store = providers.Singleton(LocalDocumentStore.load,
+                                                   os.path.join(config.data_dir(), 'source'))
+  out.cluster_document_store = providers.Singleton(LocalDocumentStore.load,
+                                                   os.path.join(config.data_dir(), 'cluster'))
+  out.user_document_store = providers.Singleton(LocalDocumentStore.load,
+                                                 os.path.join(config.data_dir(), 'user'))
   out.serving_document_store = providers.Singleton(ServingDocumentStore, config.serving_append_endpoint,
                                                    out.error_reporter)
   out.cloud_storage_document_store = providers.Singleton(CloudStorageDocumentStore, config.bucket_name)
@@ -69,7 +71,7 @@ def arg_container(*, overrides={}, test=False):
                       nargs='?',
                       default=config['verbosity'],
                       choices=['info', 'debug', 'warning', 'error'])
-  # parser.add_argument('--local-data', action='store_true', dest='local_data')
+  parser.add_argument('--local-persistence', action='store_true', dest='local_persistence')
   # parser.add_argument('--clear')
   args, _ = parser.parse_known_args()
   if test:
@@ -113,7 +115,7 @@ def _default_config():
       'version': _get_git_commit(),
       'verbosity': 'info',
       'data_dir': data_dir,
-      'local_data': False,
+      'local_persistence': False,
       'service_name': _get_service_name(),
       'bucket_name': 'recommender_collections'
   }

@@ -28,6 +28,7 @@ SOURCE_KEYS = (
 '''These define the contract of 'Posts' for the Client. Each JSON Post sent to the client should
 have all of these except where explicitly marked optional.'''
 CLIENT_POST_KEYS = (
+    # 'type',  # 'POST',
     'title_text',
     'secondary_text',  # Secondary text to display under title. Should not exceed more than a few sentences.
     'id',  # UID of the post for tracking.
@@ -36,4 +37,10 @@ CLIENT_POST_KEYS = (
     # 'media_embed',
     'created_utc_sec',
     'liked'  # 0 or 1.
+)
+
+CLIENT_CLUSTER_KEYS = (
+    # 'type',  # CLUSTER
+    'name',
+    'posts'  # List[Post]
 )

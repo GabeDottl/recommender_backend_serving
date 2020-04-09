@@ -1,12 +1,13 @@
 import uuid
+from collections import defaultdict
 from http import HTTPStatus
 from itertools import islice
 
 from flask import Flask, jsonify, make_response, request, session
 from flask_cors import CORS
 
-from common.nsn_logging import debug, error, info, warning
 from common import common_container
+from common.nsn_logging import debug, error, info, warning
 
 # Flask API cheatsheet: https://s3.us-east-2.amazonaws.com/prettyprinted/flask_cheatsheet.pdf
 # http://flask-cheat-sheet.herokuapp.com/
@@ -36,16 +37,18 @@ def _maybe_write_to_long_term_storage(collection_name, documents):
 
 def _strip_and_save_for_serving(collection_name, documents):
   posts = [_document_to_post(d) for d in documents]
-  c = _container.sources_document_store().get_collection(collection_name)
+  c = _container.source_document_store().get_collection(collection_name)
   c.append_documents(posts)
-  info(f'Saving')
-  c.save()
+  if _container.config.local_persistence():
+    info(f'Saving')
+    c.save()
 
-
+_clusters = defaultdict(list)
 
 @app.route('/ingest', methods=['POST'])
 def ingest():
   '''json={'collection': collection, 'documents': documents}'''
+  # global _clusters
   try:
     content = request.json
     debug(f'Ingesting data!!: {content}')
@@ -53,6 +56,13 @@ def ingest():
     documents = content['documents']
     _maybe_write_to_long_term_storage(collection_name, documents)
     _strip_and_save_for_serving(collection_name, documents)
+    # s = _container.cluster_document_store()
+    # for document in documents:
+    #   if 'subbreddit' in document:
+    #     s.get_collection()
+    #     # TODO: Normalize this?
+    #     # Given virtually infinite data - sorta.
+    #     _clusters[['subbreddit']].append(_document_to_post(document))
     return ''  # Return something so Response is marked successful.
   except Exception as e:
     message = f'Ingested data does not match expected format: [{{doc}}, {{doc}}, ...]. Got: {content}. Error: {e}'
@@ -90,13 +100,12 @@ def posts(page):
     id = session['id']
     debug(f'Reusing id: {id}')
 
-  user_collection = _container.users_document_store().get_collection('user')
+  user_collection = _container.user_document_store().get_collection('user')
   sent_set = set(user_collection.documents)
-  # sources = _container.sources_document_sti.get_collection('sources').documents
   posts = list(
       islice(
           filter(lambda d: d['id'] not in sent_set,
-                 _container.sources_document_store().get_all_documents()), 10))
+                 _container.source_document_store().get_all_documents()), 10))
   user_collection.append_documents([d['id'] for d in posts])
 
   if len(posts) == 0:
@@ -133,6 +142,17 @@ def liked():
 def _main():
   global _container
   _container = common_container.arg_container()
+  # https://cloud.google.com/debugger/docs/setup/python#gce
+  if _container.config.is_gce():
+    try:
+      import googleclouddebugger
+      googleclouddebugger.enable(
+        module='serving',
+        version='[VERSION]'
+      )
+    except ImportError:
+      print('Failed to import GCE')
+      pass
   # TODO: Initialize local store?
   # if _container.config.local_data():
   #   info(f'Loading local data for serving')
@@ -151,4 +171,5 @@ def main_waitress(*args):
 
 
 if __name__ == '__main__':
+  print('Hello!')
   main_waitress()

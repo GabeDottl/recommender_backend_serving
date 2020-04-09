@@ -9,7 +9,7 @@ from common.standard_keys import CLIENT_POST_KEYS
 from common import common_container
 
 
-def _gen_test_data():
+def _gen_source_test_data():
   return [{
       'id': str(i),
       'image_url': str(i),
@@ -35,10 +35,10 @@ def client():
 
     os.makedirs(tmp_dir)
     main._container = common_container.arg_container(overrides={'data_dir': tmp_dir}, test=True)
-    # sources = store.get_or_create_collection('sources')
-    # sources.append_documents(['test'])
-    test = main._container.sources_document_store().get_collection('test')
-    test.append_documents(_gen_test_data())
+    # source = store.get_or_create_collection('source')
+    # source.append_documents(['test'])
+    # test = main._container.source_document_store().get_collection('test')
+    # test.append_documents(_gen_source_test_data())
     yield client
     print(f'Clearing {tmp_dir}')
     shutil.rmtree(tmp_dir)
@@ -53,21 +53,23 @@ def test_root(client):
 
 
 def test_ingest(client):
-  test_data = _gen_test_data()
+  test_data = _gen_source_test_data()
   resp = client.post('/ingest', json={'collection': 'test2', 'documents': test_data})
   assert resp.status_code == 200
-  sources_store = main._container.sources_document_store()
-  assert sources_store.has_collection('test2')
-  test2 = sources_store.get_collection('test2')
+  source_store = main._container.source_document_store()
+  assert source_store.has_collection('test2')
+  test2 = source_store.get_collection('test2')
   assert len(list(test2.get_documents())) == len(test_data)
 
 
 def test_posts(client):
+  resp = client.post('/ingest', json={'collection': 'test', 'documents': _gen_source_test_data()})
+  assert resp.status_code == 200
   resp = client.get('/posts')
   assert resp.status_code == 200
   assert isinstance(resp.json, list)
   assert len(resp.json) == 10
-  user_collection = main._container.users_document_store().get_collection('user')
+  user_collection = main._container.user_document_store().get_collection('user')
   assert len(user_collection.documents) == 10
   ids = [d['id'] for d in resp.json]
   _check_format(resp.json)
@@ -75,7 +77,7 @@ def test_posts(client):
   resp = client.get('/posts')
   assert isinstance(resp.json, list)
   assert len(resp.json) == 10
-  user_collection = main._container.users_document_store().get_collection('user')
+  user_collection = main._container.user_document_store().get_collection('user')
   assert len(user_collection.documents) == 20
   _check_format(resp.json)
   ids.extend([d['id'] for d in resp.json])
