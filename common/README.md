@@ -20,9 +20,9 @@ Testing has 2 general purposes:
 1) Ensure robustness of the application
 2) Increasing developer velocity
 
-In large organizations with apps used by numerous users (e.g. Google, Amazon, FB, etc.) the former
+In large organizations with apps used by numerous user (e.g. Google, Amazon, FB, etc.) the former
 of these is generally important. In smaller organizations and startups which don't have a ton of
-users, tests are more important for the latter goal.
+user, tests are more important for the latter goal.
 
 Depending on which of these goals your focus is, your testing style varies substantially. If your
 focus is primarily robustness, then it may stand to reason to take a very heavy-handed approach to
