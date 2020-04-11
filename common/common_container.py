@@ -1,7 +1,4 @@
 import os
-import pyhash
-import base64
-import struct
 import shutil
 from dependency_injector import containers, providers
 from argparse import ArgumentParser
@@ -13,9 +10,11 @@ from redis import Redis
 
 from google.cloud import error_reporting
 
+from .id_hasher import IdHasher
 from .local_document_store import LocalDocumentStore
 from .serving_document_store import ServingDocumentStore
 from .cloud_storage_document_store import CloudStorageDocumentStore
+from .gcloud_storage_store import GcloudStorageStore
 from . import nsn_logging
 from .nsn_logging import info, error, warning
 
@@ -29,6 +28,7 @@ def _cloud_store():
   pass
 
 def _kv(config: dict):
+  # return CacheDecorator(cache=DictStore(), store= GcloudStorageStore('kv_store_test'))
   if config['mode'] == 'test':
     info('test: Using simple DictStore')
     return DictStore()
@@ -39,20 +39,8 @@ def _kv(config: dict):
     info('local: Using simple DictStore + FS')
     return CacheDecorator(cache=DictStore(), store=FilesystemStore(dir_))
   # TODO: Use Gcloud storage instead.
-  info('prod: Using simple Redis+FS')
-  return CacheDecorator(cache=_redis_store(config['redis_ip']), store=FilesystemStore(dir_))
-
-class IdHasher:
-  def __init__(self):
-    # This is a very fast hasher (not cryptographically safe) that's implemented natively.
-    self.hasher = pyhash.fnv1_64(seed=0xDEADBEEF)
-  
-  # Takes ~60us.
-  def hash(self, s):
-    h = self.hasher(str(s))
-    h = struct.pack("<Q", h)
-    # -1 to drop '=' at the end.
-    return base64.urlsafe_b64encode(h)[:-1].decode()
+  info('prod: Using simple Redis+GS')
+  return CacheDecorator(cache=_redis_store(config['redis_ip']), store=GcloudStorageStore('kv_store_test'))
 
 def _dynamic_container(config: providers.Configuration):
   out = containers.DynamicContainer()
