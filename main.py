@@ -201,7 +201,7 @@ def _document_to_post(doc):
       'id': doc['id'],  # UID of the post for tracking.
       # TODO: Generate URL for content where applicable, e.g. Reddit?
       'url': doc['source_url'] if 'source_url' in doc else '',  # Optional.
-      'thumbnail': doc['image_url'],  # URL to thumbnail image.
+      'thumbnail': doc['image_url'] if 'image_url' in doc else '',  # URL to thumbnail image.
       # 'media_embed': doc[''],
       'created_utc_sec': doc['created_utc_sec'],
       'liked': 0  # 0 or 1.
