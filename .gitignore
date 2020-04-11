@@ -12,6 +12,7 @@
 *.lock
 *.code-workspace
 lib/generated/* # protos
+Pipefile.lock
 
 # IntelliJ related
 *.iml

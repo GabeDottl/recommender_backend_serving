@@ -1,4 +1,6 @@
 import uuid
+import orjson
+
 from collections import defaultdict
 from http import HTTPStatus
 from itertools import islice
@@ -19,6 +21,8 @@ CORS(app)  # Sets up Access-Control-Allow-Origin
 app.secret_key = b'_5#y2L"F4Qs8z\n\xec]/'
 _container = None
 
+MAX_CLUSTER_SIZE = 1000
+
 # ########################## PRIVATE ENDPOINTS ############################
 # N.b.: THIS IS NOT LOCKED DOWN AT ALL!!!!
 # #security #hack This is allowed mostly for experimentation before committing to a more proper
@@ -35,13 +39,41 @@ def _maybe_write_to_long_term_storage(collection_name, documents):
   collection.append_documents(documents)
 
 
+def _post_store():
+  from simplekv.decorator import PrefixDecorator
+  return PrefixDecorator('post_', _container.kv_store())
+
+
+def _cluster_store():
+  from simplekv.decorator import PrefixDecorator
+  return PrefixDecorator('cluster_', _container.kv_store())
+
+
 def _strip_and_save_for_serving(collection_name, documents):
-  posts = [_document_to_post(d) for d in documents]
-  c = _container.source_document_store().get_collection(collection_name)
-  c.append_documents(posts)
-  if _container.config.local_persistence():
-    info(f'Saving')
-    c.save()
+  ps = _post_store()
+  for d in documents:
+    p = _document_to_post(d)
+    ps.put(d['id'], orjson.dumps(p))
+  # c = _container.source_document_store().get_collection(collection_name)
+  # c.append_documents(posts)
+  # # TODO: Consider something else here...
+  # if _container.config.mode() == 'local':
+  #   info(f'Saving')
+  #   c.save()
+
+
+def _add_cluster_name(n):
+  s = _container.kv_store()
+  cluster_names = _safe_get(s, '_cluster_names', list)
+  cluster_names.append(n)
+  s.put('_cluster_names', orjson.dumps(cluster_names))
+
+
+def _safe_get(store, name, fallback_fn):
+  try:
+    return orjson.loads(store.get(name))
+  except KeyError:
+    return fallback_fn()
 
 
 @app.route('/ingest', methods=['POST'])
@@ -53,15 +85,27 @@ def ingest():
     debug(f'Ingesting data!!: {content}')
     collection_name = content['collection']
     documents = content['documents']
+    for document in documents:
+      document['id'] = hash_id(document['id'])
     _maybe_write_to_long_term_storage(collection_name, documents)
     _strip_and_save_for_serving(collection_name, documents)
-    s = _container.cluster_document_store()
+    # s = _container.cluster_document_store()
+    cs = _cluster_store()
     for document in documents:
       if 'subreddit_name' in document:
-        c = s.get_collection(document['subreddit_name'])
-        # TODO: Normalize this?
-        # Given virtually infinite data - sorta.
-        c.append_documents([_document_to_post(document)])
+        n = f'reddit_{document["subreddit_name"]}'
+      else:
+        n = collection_name
+      try:
+        cluster = orjson.loads(cs.get(n))
+      except KeyError:
+        _add_cluster_name(n)
+        cluster = []
+      # TODO: PriorityQueue.
+      cluster.append(document['id'])
+      if len(cluster) > MAX_CLUSTER_SIZE:
+        cluster = cluster[1:]  # pop off head to keep size reasonable
+      cs.put(n, orjson.dumps(cluster))
     return ''  # Return something so Response is marked successful.
   except Exception as e:
     message = f'Ingested data does not match expected format: [{{doc}}, {{doc}}, ...]. Got: {content}. Error: {e}'
@@ -100,26 +144,44 @@ def posts(page):
     id = session['id']
     debug(f'Reusing id: {id}')
 
-  user_collection = _container.user_document_store().get_collection('user')
-  sent_set = set(user_collection.documents)
-  posts = list(
-      islice(
-          filter(lambda d: d['id'] not in sent_set,
-                 _container.source_document_store().get_all_documents()), 10))
-  cluster_collections = _container.cluster_document_store().get_collections()
+  user_history = _safe_get(_container.kv_store(), 'user', list)
+  sent_set = set(user_history)
+  # posts = list(
+  #     islice(
+  #         filter(lambda d: d['id'] not in sent_set,
+  #                _container.source_document_store().get_all_documents()), 10))
+  cluster_names = _safe_get(_container.kv_store(), '_cluster_names', list)
 
   items = []
-  # #hack #performance - we copy to avoid threading issues with concurrent adding in ingestion.
-  for name, c in cluster_collections.copy().items():
+  cs = _cluster_store()
+  ps = _post_store()
+  post_count = 0
+  MAX_POST_SEND = 30
+  for name in cluster_names:
+    cluster = _safe_get(cs, name, list)
     client_cluster = {}
     client_cluster['type'] = 'CLUSTER'
-    client_cluster['id'] = name # TODO?
+    client_cluster['id'] = name  # TODO?
     client_cluster['name'] = name
-    client_cluster['posts'] = c.get_documents()
+    posts = client_cluster['posts'] = []
+    for post_id in cluster:
+      if post_id in sent_set:
+        continue
+      sent_set.add(post_id)
+      post_count += 1
+      posts.append(ps.get(post_id))
+      if post_count >= MAX_POST_SEND:
+        break
+    debug(f'client_cluster: {client_cluster}')
+    if not posts:
+      continue
     items.append(client_cluster)
-    info(f'client_cluster: {client_cluster}')
-  user_collection.append_documents([d['id'] for d in posts])
-  items += posts
+    if post_count >= MAX_POST_SEND:
+      break
+
+  # TODO: make sent_set an LRU cache.
+  # user_history += [d['id'] for d in posts]
+  _container.kv_store().put('user', orjson.dumps(list(sent_set)))
 
   if len(items) == 0:
     return make_response('500: No items', 500)
@@ -180,7 +242,10 @@ def main_waitress(*args):
   from waitress import serve
   serve(app, host='0.0.0.0', port=5000)
 
+
 _container = common_container.arg_container()
+# Bad early optimization, but just retrieving the hasher takes ~20us - so prefer caching.
+hash_id = _container.hasher().hash
 
 if __name__ == '__main__':
   print(f'Hello! - {__file__}')
