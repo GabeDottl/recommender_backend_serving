@@ -6,7 +6,7 @@
 [subrepo]
 	remote = git@github.com:GabeDottl/recommender_backend_common.git
 	branch = master
-	commit = f34fe1430f2f7a1b5cf63bfce69d75b9aff50516
-	parent = 15479ec98ec88f2b83b4aa52620bb4dd83cf072d
+	commit = 23071424bfd5eda5338e6c05033914f89a38b2d5
+	parent = d418a0767951c8346228975bc36c7c83b73113b6
 	method = merge
 	cmdver = 0.4.1
