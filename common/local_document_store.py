@@ -26,6 +26,9 @@ class LocalDocumentStore(document_store.DocumentStore):
       os.makedirs(collections_path)
     self.collections = {}
 
+  def get_collections(self):
+    return self.collections
+
   def has_collection(self, collection_name):
     return collection_name in self.collections
 

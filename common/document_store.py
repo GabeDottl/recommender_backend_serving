@@ -3,6 +3,10 @@ from .nsn_logging import debug
 
 
 class DocumentStore:
+
+  def get_collections(self) -> 'Dict[str, Collection]':
+    raise Exception(f'get_collections not implemented')
+
   def get_collection(self, name) -> 'Collection':
     raise Exception(f'get_collection not implemented')
 
@@ -14,6 +18,9 @@ class DocumentStore:
 
 
 class Collection:
+  # TODO: Flush? Would be nice to not make as many indiv. requests but also keep impl. detailt
+  # abstracted away.
+
   def append_documents(self, documents):
     raise Exception(f'append_documents not implemented')
 
@@ -22,6 +29,7 @@ class Collection:
 
 
 class NoopDocumentStore:
+
   def get_collection(self, name) -> 'Collection':
     debug(f'Noop: get_collection')
     return NoopCollection()
@@ -32,6 +40,7 @@ class NoopDocumentStore:
 
 
 class NoopCollection:
+
   def append_documents(self, documents):
     debug(f'Noop: append_documents')
     pass

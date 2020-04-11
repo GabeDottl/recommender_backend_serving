@@ -24,11 +24,28 @@ SOURCE_KEYS = (
     'retrieved_utc',  # Optional; TODO
 )
 
+
+
+def is_valid_item(item) -> bool:
+    if not all(k in item for k in CLIENT_ITEM_KEYS):
+      return False
+    type_ = item['type']
+    if type_ != 'POST' and type_ != 'CLUSTER':
+      return False
+    if item['type'] == 'POST' and not all(k in item for k in CLIENT_POST_KEYS):
+      return False
+    if item['type'] == 'CLUSTER' and not all(k in item for k in CLIENT_CLUSTER_KEYS):
+      return False
+    return True
+
+
+CLIENT_ITEM_KEYS = ('type', 'id')
+
 # Post
 '''These define the contract of 'Posts' for the Client. Each JSON Post sent to the client should
 have all of these except where explicitly marked optional.'''
 CLIENT_POST_KEYS = (
-    # 'type',  # 'POST',
+    'type',  # 'POST',
     'title_text',
     'secondary_text',  # Secondary text to display under title. Should not exceed more than a few sentences.
     'id',  # UID of the post for tracking.
@@ -40,7 +57,7 @@ CLIENT_POST_KEYS = (
 )
 
 CLIENT_CLUSTER_KEYS = (
-    # 'type',  # CLUSTER
+    'type',  # CLUSTER
     'name',
     'posts'  # List[Post]
 )
