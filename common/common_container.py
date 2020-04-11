@@ -1,7 +1,6 @@
 import os
 from dependency_injector import containers, providers
 from argparse import ArgumentParser
-from simplekv.memory import DictStore
 
 from google.cloud import error_reporting
 
@@ -9,22 +8,25 @@ from .local_document_store import LocalDocumentStore
 from .serving_document_store import ServingDocumentStore
 from .cloud_storage_document_store import CloudStorageDocumentStore
 from . import nsn_logging
-from .nsn_logging import info, warning, error, debug
+from .nsn_logging import info, error
 
 
+# TODO: Add test to ensure the providers in this match _dynamic_container.
 def _test_container(config: providers.Configuration):
+  from .fake_serving_document_store import FakeServingDocumentStore
+  from .document_store import NoopDocumentStore
   out = containers.DynamicContainer()
   out.config = config
-  if not config.is_gce():
-    out.error_reporter = providers.Singleton(NoOpErrorReporter)
-  else:
-    out.error_reporter = providers.Singleton(error_reporting.Client, service=config.service_name)
-
-  out.local_document_store = providers.Singleton(LocalDocumentStore.load, config.data_dir)
-  out.serving_document_store = providers.Singleton(ServingDocumentStore, config.serving_append_endpoint,
-                                                   out.error_reporter)
-  out.cloud_storage_document_store = providers.Singleton(CloudStorageDocumentStore, config.bucket_name)
-  out.document_store = out.local_document_store
+  out.error_reporter = providers.Singleton(NoOpErrorReporter)
+  out.cluster_document_store = providers.Singleton(LocalDocumentStore.load,
+                                                   os.path.join(config.data_dir(), 'cluster'))
+  out.source_document_store = providers.Singleton(LocalDocumentStore.load,
+                                                   os.path.join(config.data_dir(), 'source'))
+  out.user_document_store = providers.Singleton(LocalDocumentStore.load,
+                                                 os.path.join(config.data_dir(), 'user'))
+  out.serving_document_store = providers.Singleton(FakeServingDocumentStore)
+  # DocumentStore == NoopDocumentStore
+  out.cloud_storage_document_store = providers.Singleton(NoopDocumentStore)
   print(config.local())
   return out
 
@@ -37,13 +39,16 @@ def _dynamic_container(config: providers.Configuration):
   else:
     out.error_reporter = providers.Singleton(error_reporting.Client, service=config.service_name)
 
-  out.kv_store = providers.Singleton(DictStore)
-  out.local_document_store = providers.Singleton(LocalDocumentStore.load, config.data_dir)
+  out.source_document_store = providers.Singleton(LocalDocumentStore.load,
+                                                   os.path.join(config.data_dir(), 'source'))
+  out.cluster_document_store = providers.Singleton(LocalDocumentStore.load,
+                                                   os.path.join(config.data_dir(), 'cluster'))
+  out.user_document_store = providers.Singleton(LocalDocumentStore.load,
+                                                 os.path.join(config.data_dir(), 'user'))
   out.serving_document_store = providers.Singleton(ServingDocumentStore, config.serving_append_endpoint,
                                                    out.error_reporter)
   out.cloud_storage_document_store = providers.Singleton(CloudStorageDocumentStore, config.bucket_name)
-  out.document_store = out.local_document_store
-  print(config.local())
+
   return out
 
 
@@ -56,7 +61,9 @@ class NoOpErrorReporter:
     pass
 
 
-def arg_container(force_local=False):
+def arg_container(*, overrides={}, test=False):
+  if test:
+    assert 'data_dir' in overrides, 'data_dir must be provided by tests so they can perform cleanup.  '
   config = _default_config().copy()
   parser = ArgumentParser()
   parser.add_argument('--local', action='store_true')
@@ -65,16 +72,27 @@ def arg_container(force_local=False):
                       nargs='?',
                       default=config['verbosity'],
                       choices=['info', 'debug', 'warning', 'error'])
-  parser.add_argument('--local-data', action='store_true', dest='local_data')
+  parser.add_argument('--local-persistence', action='store_true', dest='local_persistence')
+  parser.add_argument('--debug-mode', action='store_true', dest='debug_mode')
+  # parser.add_argument('--clear')
   args, _ = parser.parse_known_args()
+  if test:
+    config['verbosity'] = 'debug'
   config.update(vars(args))
-  config['local'] = config['local'] or force_local
-  if config['local']:
+  config.update(overrides)
+  # if test:
+  #   config['data_dir']
+  # config['local'] = config['local']
+
+  if config['local'] and 'serving_address' not in overrides:
     config['serving_address'] = _local_address()
   _apply_secondary_config(config)
   nsn_logging.set_verbosity(config['verbosity'])
   provider_config = providers.Configuration('config')
   provider_config.override(config)
+  info(f'Configuration is: {config}')
+  if test:
+    return _test_container(provider_config)
   return _dynamic_container(provider_config)
 
 
@@ -87,14 +105,23 @@ def _apply_secondary_config(config):
 
 def _default_config():
   is_gce = _is_gce()
+  if not is_gce and os.getenv('DATA'):
+    data_dir = os.path.join(os.getenv('DATA'), 'recommender')
+  else:
+    data_dir = './data'
+
+  # Note: These are sorted and clustered by relatedness and relevance for debugging.
+  # This is to make it easier to debug configuration issue when this is printed at runtime.
   return {
-      'serving_address': _external_static_ip(),
-      'project_id': 'recommender-270613',
       'is_gce': is_gce,
-      'version': _get_git_commit(),
+      'serving_address': _external_static_ip(),
+      'local': False,
+      'local_persistence': False,
+      'debug_mode': False,
+      'data_dir': data_dir,
       'verbosity': 'info',
-      'data_dir': './data' if is_gce else os.path.join(os.getenv('DATA'), 'recommender'),
-      'local_data': False,
+      'project_id': 'recommender-270613',
+      'version': _get_git_commit(),
       'service_name': _get_service_name(),
       'bucket_name': 'recommender_collections'
   }
@@ -124,7 +151,7 @@ def _gce_address():
   zone = 'us-west2-a'
   project_id = 'recommender-270613'
   # NOTE: This won't work with cloud-shell since it's not in our VPC.
-  address = f'http://{instance_name}.{zone}.c.{project_id}.internal:{port}'
+  return f'http://{instance_name}.{zone}.c.{project_id}.internal:{port}'
 
 
 def _external_static_ip():
