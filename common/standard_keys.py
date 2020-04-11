@@ -24,10 +24,22 @@ SOURCE_KEYS = (
     'retrieved_utc',  # Optional; TODO
 )
 
-CLIENT_ITEM_KEYS = (
-    'type',
-    'id'
-)
+
+
+def is_valid_item(item) -> bool:
+    if not all(k in item for k in CLIENT_ITEM_KEYS):
+      return False
+    type_ = item['type']
+    if type_ != 'POST' and type_ != 'CLUSTER':
+      return False
+    if item['type'] == 'POST' and not all(k in item for k in CLIENT_POST_KEYS):
+      return False
+    if item['type'] == 'CLUSTER' and not all(k in item for k in CLIENT_CLUSTER_KEYS):
+      return False
+    return True
+
+
+CLIENT_ITEM_KEYS = ('type', 'id')
 
 # Post
 '''These define the contract of 'Posts' for the Client. Each JSON Post sent to the client should

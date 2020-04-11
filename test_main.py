@@ -5,7 +5,7 @@ import pytest
 
 import main
 
-from common.standard_keys import CLIENT_POST_KEYS, CLIENT_CLUSTER_KEYS, CLIENT_ITEM_KEYS
+from common.standard_keys import is_valid_item
 from common import common_container
 
 
@@ -62,6 +62,26 @@ def test_ingest(client):
   assert len(list(test2.get_documents())) == len(test_data)
 
 
+def test_clusters(client):
+  test_data = [{
+      'id': str(i),
+      'image_url': str(i),
+      'title_text': str(i),
+      'subreddit_name': f'subreddit_{i // 5}', # 4 subreddits, 0, 1, 2, 3.
+      'secondary_text': str(i),
+      'created_utc_sec': str(i),
+      'source_url': str(i),
+      'retrieved_utc_sec': str(i),
+  } for i in range(20)]
+  resp = client.post('/ingest', json={'collection': 'test', 'documents': test_data})
+  assert resp.status_code == 200
+  resp = client.get('/posts')
+  assert resp.status_code == 200
+  items = resp.json
+  assert all(is_valid_item(i) for i in items)
+  # Ensure there are 4 clusters in the out.
+  assert len(list(filter(lambda i: i['type'] == 'CLUSTER', items))) == 4
+
 def test_posts(client):
   resp = client.post('/ingest', json={'collection': 'test', 'documents': _gen_source_test_data()})
   assert resp.status_code == 200
@@ -88,8 +108,4 @@ def test_posts(client):
 def _check_format(client_items):
   for item in client_items:
     # Check every expected key is present.
-    assert all(k in item for k in CLIENT_ITEM_KEYS)
-    if item['type'] == 'POST':
-      assert all(k in item for k in CLIENT_POST_KEYS)
-    if item['type'] == 'CLUSTER':
-      assert all(k in item for k in CLIENT_CLUSTER_KEYS)
+    assert is_valid_item(item)

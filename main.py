@@ -43,7 +43,6 @@ def _strip_and_save_for_serving(collection_name, documents):
     info(f'Saving')
     c.save()
 
-_clusters = defaultdict(list)
 
 @app.route('/ingest', methods=['POST'])
 def ingest():
@@ -58,11 +57,11 @@ def ingest():
     _strip_and_save_for_serving(collection_name, documents)
     s = _container.cluster_document_store()
     for document in documents:
-      if 'subbreddit' in document:
-        s.get_collection()
+      if 'subreddit_name' in document:
+        c = s.get_collection(document['subreddit_name'])
         # TODO: Normalize this?
         # Given virtually infinite data - sorta.
-        _clusters[['subbreddit']].append(_document_to_post(document))
+        c.append_documents([_document_to_post(document)])
     return ''  # Return something so Response is marked successful.
   except Exception as e:
     message = f'Ingested data does not match expected format: [{{doc}}, {{doc}}, ...]. Got: {content}. Error: {e}'
@@ -89,6 +88,7 @@ def index():
   return f'This is {socket.gethostname()} @ {version}!!!!'
 
 
+# TODO: Rename /posts to /items?
 @app.route('/posts/<page>', methods=['GET'])
 @app.route('/posts', methods=['GET'], defaults={'page': None})
 def posts(page):
@@ -106,25 +106,39 @@ def posts(page):
       islice(
           filter(lambda d: d['id'] not in sent_set,
                  _container.source_document_store().get_all_documents()), 10))
-  user_collection.append_documents([d['id'] for d in posts])
+  cluster_collections = _container.cluster_document_store().get_collections()
 
-  if len(posts) == 0:
-    return make_response('500: No posts', 500)
-  return jsonify(posts)
+  items = []
+  # #hack #performance - we copy to avoid threading issues with concurrent adding in ingestion.
+  for name, c in cluster_collections.copy().items():
+    client_cluster = {}
+    client_cluster['type'] = 'CLUSTER'
+    client_cluster['id'] = name # TODO?
+    client_cluster['name'] = name
+    client_cluster['posts'] = c.get_documents()
+    items.append(client_cluster)
+    info(f'client_cluster: {client_cluster}')
+  user_collection.append_documents([d['id'] for d in posts])
+  items += posts
+
+  if len(items) == 0:
+    return make_response('500: No items', 500)
+
+  if _container.config.debug_mode():
+    from common import standard_keys
+    assert all(standard_keys.is_valid_item(i) for i in items)
+
+  return jsonify(items)
 
 
 def _document_to_post(doc):
-  # assert type(doc) == dict, doc
-  # from common.standard_keys import REQUIRED_SOURCE_KEYS
-  # for k in REQUIRED_SOURCE_KEYS:
-  #   assert k in doc, (k, doc)
   return {
       'type': 'POST',
       'title_text': doc['title_text'],
       'secondary_text': doc['secondary_text'],
       'id': doc['id'],  # UID of the post for tracking.
       # TODO: Generate URL for content where applicable, e.g. Reddit?
-      'url': doc['source_url'] if 'source_url' in doc else '', # Optional.
+      'url': doc['source_url'] if 'source_url' in doc else '',  # Optional.
       'thumbnail': doc['image_url'],  # URL to thumbnail image.
       # 'media_embed': doc[''],
       'created_utc_sec': doc['created_utc_sec'],
@@ -141,16 +155,12 @@ def liked():
 
 
 def _main():
-  global _container
-  _container = common_container.arg_container()
+
   # https://cloud.google.com/debugger/docs/setup/python#gce
   if _container.config.is_gce():
     try:
       import googleclouddebugger
-      googleclouddebugger.enable(
-        module='serving',
-        version='[VERSION]'
-      )
+      googleclouddebugger.enable(module='serving', version='[VERSION]')
     except ImportError:
       print('Failed to import GCE')
       pass
@@ -170,7 +180,8 @@ def main_waitress(*args):
   from waitress import serve
   serve(app, host='0.0.0.0', port=5000)
 
+_container = common_container.arg_container()
 
 if __name__ == '__main__':
-  print('Hello!')
-  main_waitress()
+  print(f'Hello! - {__file__}')
+  _debug_app()
