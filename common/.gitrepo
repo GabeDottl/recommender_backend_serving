@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
+;
+[subrepo]
+	remote = git@github.com:GabeDottl/recommender_backend_common.git
+	branch = master
+	commit = 556e10ea037f88aede2adae76d025696c7ad7188
+	parent = 5e3dee6f8d49edeafce8832fafe68ae12e4b84c7
+	method = merge
+	cmdver = 0.4.1
