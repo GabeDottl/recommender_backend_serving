@@ -209,7 +209,7 @@ def _gce_address():
 
 def _external_static_ip():
   port = 5000
-  return f'http://34.94.222.40:{port}'
+  return f'http://34.94.210.159:{port}'
 
 
 def _local_address():
