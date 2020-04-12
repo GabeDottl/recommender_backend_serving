@@ -1,5 +1,5 @@
 from google.cloud import storage
-import json
+import orjson
 import os.path
 from datetime import datetime
 
@@ -39,7 +39,7 @@ class CloudStorageCollection(Collection):
                              str(documents[0]['id']))
     debug(f'Uploaded blob {blob_name}')
     blob = storage.Blob(bucket=self.bucket, name=blob_name)
-    blob.upload_from_string(json.dumps(documents))
+    blob.upload_from_string(orjson.dumps(documents))
 
 
 def datetime_to_name(dt: datetime):

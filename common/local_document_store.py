@@ -10,7 +10,7 @@ http://effbot.org/pyfaq/what-kinds-of-global-value-mutation-are-thread-safe.htm
 
 '''
 import os
-import json
+import orjson
 
 from itertools import chain
 
@@ -111,7 +111,7 @@ class LocalCollection(document_store.Collection):
     out = LocalCollection(path) #path_to_name(path))
     try:
       with open(path, 'r') as f:
-        out.documents = json.load(f)
+        out.documents = orjson.load(f)
         debug(f'out.documents: {len(out.documents)}')
     except Exception as e:
       if not create_on_fail:
@@ -122,4 +122,4 @@ class LocalCollection(document_store.Collection):
   def save(self):
     info(f'Saving to {self.path}')
     with open(self.path, 'w') as f:
-      json.dump(self.documents, f)
+      orjson.dump(self.documents, f)
