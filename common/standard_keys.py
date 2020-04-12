@@ -1,3 +1,4 @@
+
 '''This module mostly exists to establish some basic document keys that should be universal.'''
 '''These keys define the expected keys in JSON documents provided by source (e.g. news_api, reddit).
 
@@ -13,7 +14,7 @@ REQUIRED_SOURCE_KEYS = (
     'created_utc_sec',
 )
 
-# Document
+# Documentr
 SOURCE_KEYS = (
     'id',  # Optional; auto-generated if not present.
     'image_url',
@@ -24,27 +25,12 @@ SOURCE_KEYS = (
     'retrieved_utc',  # Optional; TODO
 )
 
-
-
-def is_valid_item(item) -> bool:
-    if not all(k in item for k in CLIENT_ITEM_KEYS):
-      return False
-    type_ = item['type']
-    if type_ != 'POST' and type_ != 'CLUSTER':
-      return False
-    if item['type'] == 'POST' and not all(k in item for k in CLIENT_POST_KEYS):
-      return False
-    if item['type'] == 'CLUSTER' and not all(k in item for k in CLIENT_CLUSTER_KEYS):
-      return False
-    return True
-
-
-CLIENT_ITEM_KEYS = ('type', 'id')
+CLIENT_ITEM_KEYS = ['type', 'id']
 
 # Post
 '''These define the contract of 'Posts' for the Client. Each JSON Post sent to the client should
 have all of these except where explicitly marked optional.'''
-CLIENT_POST_KEYS = (
+CLIENT_POST_KEYS = CLIENT_ITEM_KEYS + [
     'type',  # 'POST',
     'title_text',
     'secondary_text',  # Secondary text to display under title. Should not exceed more than a few sentences.
@@ -54,10 +40,29 @@ CLIENT_POST_KEYS = (
     # 'media_embed',
     'created_utc_sec',
     'liked'  # 0 or 1.
-)
+]
 
-CLIENT_CLUSTER_KEYS = (
+CLIENT_REDDIT_POST_KEYS = ['subreddit', 'author', 'score'] + CLIENT_POST_KEYS
+
+CLIENT_CLUSTER_KEYS = CLIENT_ITEM_KEYS + [
     'type',  # CLUSTER
     'name',
-    'posts'  # List[Post]
-)
+    'items'  # List[Post]
+]
+
+__mapping = {
+    'REDDIT_POST': CLIENT_REDDIT_POST_KEYS,
+    'POST': CLIENT_POST_KEYS,
+    'CLUSTER': CLIENT_CLUSTER_KEYS,
+}
+
+
+def is_valid_item(item) -> bool:
+  if 'type' not in item or item['type'] not in __mapping:
+    return False
+  for k in __mapping[item['type']]:
+    if k not in item:
+      from common.nsn_logging import warning
+      warning(f'Missing {k} in {item}')
+      return False
+  return True

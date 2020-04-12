@@ -7,6 +7,8 @@ from simplekv.cache import CacheDecorator
 from simplekv.memory.redisstore import RedisStore
 from simplekv.fs import FilesystemStore
 from redis import Redis
+from boltons.cacheutils import LRU
+from boltons.funcutils import wraps
 
 from google.cloud import error_reporting
 
@@ -24,14 +26,16 @@ def _redis_store(redis_ip):
   r = Redis(host=redis_ip)
   return RedisStore(r)
 
+
 def _cloud_store():
   pass
+
 
 def _kv(config: dict):
   # return CacheDecorator(cache=DictStore(), store= GcloudStorageStore('kv_store_test'))
   if config['mode'] == 'test':
     info('test: Using simple DictStore')
-    return DictStore()
+    return DictStore(d=LRU(max_size=1024))
   dir_ = os.path.join(config['data_dir'], 'kv')
   if not os.path.exists(dir_):
     os.makedirs(dir_)
@@ -40,16 +44,47 @@ def _kv(config: dict):
     return CacheDecorator(cache=DictStore(), store=FilesystemStore(dir_))
   # TODO: Use Gcloud storage instead.
   info('prod: Using simple Redis+GS')
-  return CacheDecorator(cache=_redis_store(config['redis_ip']), store=GcloudStorageStore('kv_store_test'))
+  return CacheDecorator(
+      cache=_redis_store(config['redis_ip']),
+      store=GcloudStorageStore('kv_store_test'))
+
+def exception_wrapper(reporter, consume_exception=False):
+  def meta_wrapper(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+      try:
+        return fn(*args, **kwargs)
+      except Exception:
+        reporter.report_exception()
+        raise
+    return wrapper
+  return meta_wrapper
+
+def instance_exception_wrapper(consume_exception=False):
+  def meta_wrapper(fn):
+    @wraps(fn)
+    def wrapper(self, *args, **kwargs):
+      try:
+        return fn(self, *args, **kwargs)
+      except Exception:
+        self.container.error_reporter().report_exception()
+        raise
+    return wrapper
+  return meta_wrapper
+
 
 def _dynamic_container(config: providers.Configuration):
   out = containers.DynamicContainer()
   out.config = config
   if not config.is_gce() or config.test():
-    out.error_reporter = providers.ThreadSafeSingleton(NoOpErrorReporter)
+    out.error_reporter = providers.ThreadSafeSingleton(LoggingErrorReporter)
   else:
-    out.error_reporter = providers.ThreadSafeSingleton(
-        error_reporting.Client, service=config.service_name)
+    # Log to both GCP & the error log.
+    gcp_reporter = error_reporting.Client(service=config.service_name())
+    logging_reporter = LoggingErrorReporter()
+    out.error_reporter = providers.ThreadSafeSingleton(MultiErrorReporter,
+                                                       gcp_reporter,
+                                                       logging_reporter)
 
   out.hasher = providers.ThreadSafeSingleton(IdHasher)
   # Note that out.config() -> dict.
@@ -63,16 +98,20 @@ def _dynamic_container(config: providers.Configuration):
   if config.test():
     from .fake_serving_document_store import FakeServingDocumentStore
     from .document_store import NoopDocumentStore
-    out.serving_document_store = providers.ThreadSafeSingleton(FakeServingDocumentStore)
-    # DocumentStore == NoopDocumentStore
-    out.cloud_storage_document_store = providers.ThreadSafeSingleton(NoopDocumentStore)
-  else: # not test.
     out.serving_document_store = providers.ThreadSafeSingleton(
-        ServingDocumentStore, config.serving_append_endpoint, out.error_reporter)
+        FakeServingDocumentStore)
+    # DocumentStore == NoopDocumentStore
+    out.cloud_storage_document_store = providers.ThreadSafeSingleton(
+        NoopDocumentStore)
+  else:  # not test.
+    out.serving_document_store = providers.ThreadSafeSingleton(
+        ServingDocumentStore, config.serving_append_endpoint,
+        out.error_reporter)
     out.cloud_storage_document_store = providers.ThreadSafeSingleton(
         CloudStorageDocumentStore, config.bucket_name)
 
   return out
+
 
 def cleanup(config):
   if not config.test():
@@ -82,14 +121,31 @@ def cleanup(config):
   if os.path.exists(config.data_dir()):
     shutil.rmtree(config.data_dir())
 
-class NoOpErrorReporter:
 
-  def report(self, *args, **kwargs):
-    print('Reporting')
-    pass
+class LoggingErrorReporter:
+
+  def report(self, message, *args, **kwargs):
+    error(message)
 
   def report_exception(self, *args, **kwargs):
-    pass
+    import sys
+    type_, value, traceback = sys.exec_info()
+    error(f'Reporting exception of type {type}: {value}')
+
+
+class MultiErrorReporter:
+
+  def __init__(self, reporter_a, reporter_b):
+    self.reporter_a = reporter_a
+    self.reporter_a = reporter_a
+
+  def report(self, *args, **kwargs):
+    self.reporter_a.report(*args, **kwargs)
+    self.reporter_b.report(*args, **kwargs)
+
+  def report_exception(self, *args, **kwargs):
+    self.reporter_a.report_exception(*args, **kwargs)
+    self.reporter_b.report_exception(*args, **kwargs)
 
 
 def arg_container(*, overrides={}, test=False):
@@ -102,10 +158,12 @@ def arg_container(*, overrides={}, test=False):
       default=config['verbosity'],
       choices=['info', 'debug', 'warning', 'error'])
   parser.add_argument('--debug-mode', action='store_true', dest='debug_mode')
+  parser.add_argument('--clear-user', action='store_true', dest='clear_user')
 
   args, _ = parser.parse_known_args()
   if test:
     config['mode'] = 'test'
+  config.update(vars(args))
   _update_config_for_mode(config)
   # Apply args provided directly to function last to overwrite anything else.
   config.update(overrides)
@@ -122,13 +180,14 @@ def _apply_secondary_config(config):
 
   config['serving_append_endpoint'] = f'{config["serving_address"]}/ingest'
 
+
 def _update_config_for_mode(config):
-  mode = config['mode'] # prod, local, test
+  mode = config['mode']  # prod, local, test
   if mode == 'prod':
     config['serving_address'] = _external_static_ip()
     config['redis_ip'] = '10.214.155.187'
     config['data_dir'] = './tmp'
-  else: # local, test
+  else:  # local, test
     config['serving_address'] = _local_address()
     config['redis_ip'] = 'localhost'
     if mode == 'test':
@@ -138,7 +197,7 @@ def _update_config_for_mode(config):
         shutil.rmtree(tmp_dir)
       os.makedirs(tmp_dir)
       config['data_dir'] = tmp_dir
-    else: # local
+    else:  # local
       if not config['is_gce'] and os.getenv('DATA'):
         data_dir = os.path.join(os.getenv('DATA'), 'recommender')
       else:
@@ -157,6 +216,7 @@ def _default_config():
       'is_gce': is_gce,
       'mode': mode,
       'debug_mode': False,
+      'clear_user': False,
       'verbosity': 'info',
       'project_id': 'recommender-270613',
       'version': _get_git_commit(),
