@@ -9,8 +9,10 @@ from common.store_utils import post_store, cluster_store, safe_get
 
 MAX_CLUSTER_SIZE = 1000
 
+
 def _is_reddit(doc):
   return 'subreddit_name' in doc
+
 
 class Ingestion:
 
@@ -31,17 +33,26 @@ class Ingestion:
   @common_container.instance_exception_wrapper()
   def _document_to_post(self, doc):
     return {
-        'type': 'POST',
-        'title_text': doc['title_text'],
-        'secondary_text': doc['secondary_text'],
-        'id': doc['id'],  # UID of the post for tracking.
+        'type':
+            'POST',
+        'title_text':
+            doc['title_text'],
+        'secondary_text':
+            doc['secondary_text'],
+        'id':
+            doc['id'],  # UID of the post for tracking.
         # TODO: Generate URL for content where applicable, e.g. Reddit?
-        'url': doc['source_url'] if 'source_url' in doc else '',  # Optional.
+        'url':
+            doc['source_url'] if 'source_url' in doc else '',  # Optional.
         # URL to thumbnail image.
-        'thumbnail': doc['image_url'] if 'image_url' in doc else '',
+        'thumbnail':
+            doc['image_url'] if 'image_url' in doc else
+            doc['thumbnail'] if 'thumbnail' in doc else '',
         # May come in as float - we want to send out as an int.
-        'created_utc_sec': int(float(doc['created_utc_sec'])),
-        'liked': 0  # 0 or 1.
+        'created_utc_sec':
+            int(float(doc['created_utc_sec'])),
+        'liked':
+            0  # 0 or 1.
     }
 
   @common_container.instance_exception_wrapper()
@@ -52,7 +63,6 @@ class Ingestion:
     out['author'] = doc['author_name']
     out['score'] = int(doc['score'])
     return out
-
 
 
   def _add_cluster_name(self, n):
