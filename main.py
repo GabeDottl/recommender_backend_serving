@@ -166,11 +166,12 @@ def _debug_app(*args):
   app.run(host='0.0.0.0', port=5000, debug=True)
 
 
-def main_waitress(*args):
+def main_gunicorn(*args):
   _main()
   # #performance #security Migrate to gunicorn? https://quintagroup.com/cms/python/web-server
-  from waitress import serve
-  serve(app, host='0.0.0.0', port=5000)
+  # from gunicorn import serve
+  # serve(app, host='0.0.0.0', port=5000)
+  return app
 
 
 
@@ -179,4 +180,4 @@ if __name__ == '__main__':
   if _container.config()['debug_mode']:
     _debug_app()
   else:
-    main_waitress()
+    main_gunicorn()
