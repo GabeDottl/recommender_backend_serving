@@ -57,16 +57,18 @@ def test_ingest(client):
 
 
 def test_clusters(client):
-  test_data = [{
-      'id': str(i),
-      'image_url': str(i),
-      'title_text': str(i),
-      'subreddit_name': f'subreddit_{i // 5}', # 4 subreddits, 0, 1, 2, 3.
-      'secondary_text': str(i),
-      'created_utc_sec': str(i),
-      'source_url': str(i),
-      'retrieved_utc_sec': str(i),
-  } for i in range(20)]
+  test_data = [
+      {
+          'id': str(i),
+          'image_url': str(i),
+          'title_text': str(i),
+          'subreddit_name': f'subreddit_{i // 5}',  # 4 subreddits, 0, 1, 2, 3.
+          'secondary_text': str(i),
+          'created_utc_sec': str(i),
+          'source_url': str(i),
+          'retrieved_utc_sec': str(i),
+      } for i in range(20)
+  ]
   resp = client.post('/ingest', json={'collection': 'test', 'documents': test_data})
   assert resp.status_code == 200
   resp = client.get('/posts')

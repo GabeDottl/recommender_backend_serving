@@ -15,7 +15,6 @@ def _is_reddit(doc):
 
 
 class Ingestion:
-
   def __init__(self, container):
     self.container = container
     # Bad early optimization, but just retrieving the hasher takes ~20us - so prefer caching.
@@ -35,26 +34,18 @@ class Ingestion:
   @common_container.instance_exception_wrapper()
   def _document_to_post(self, doc):
     return {
-        'type':
-            'POST',
-        'title_text':
-            doc['title_text'],
-        'secondary_text':
-            doc['secondary_text'],
-        'id':
-            doc['id'],  # UID of the post for tracking.
+        'type': 'POST',
+        'title_text': doc['title_text'],
+        'secondary_text': doc['secondary_text'],
+        'id': doc['id'],  # UID of the post for tracking.
         # TODO: Generate URL for content where applicable, e.g. Reddit?
-        'url':
-            doc['source_url'] if 'source_url' in doc else '',  # Optional.
+        'url': doc['source_url'] if 'source_url' in doc else '',  # Optional.
         # URL to thumbnail image.
         'thumbnail':
-            doc['image_url'] if 'image_url' in doc else
-            doc['thumbnail'] if 'thumbnail' in doc else '',
+        doc['image_url'] if 'image_url' in doc else doc['thumbnail'] if 'thumbnail' in doc else '',
         # May come in as float - we want to send out as an int.
-        'created_utc_sec':
-            int(float(doc['created_utc_sec'])),
-        'liked':
-            0  # 0 or 1.
+        'created_utc_sec': int(float(doc['created_utc_sec'])),
+        'liked': 0  # 0 or 1.
     }
 
   @common_container.instance_exception_wrapper()
@@ -122,12 +113,9 @@ class Ingestion:
       documents = content['documents']
       for document in documents:
         if 'id' in document:
-          document['id'] = self.hash_id(
-              f'{collection_name}{document["source_url"]}{document["id"]}')
+          document['id'] = self.hash_id(f'{collection_name}{document["source_url"]}{document["id"]}')
         else:  # Fallback
-          document['id'] = self.hash_id(
-              f'{collection_name}{document["source_url"]}{document["title_text"]}'
-          )
+          document['id'] = self.hash_id(f'{collection_name}{document["source_url"]}{document["title_text"]}')
 
         type_ = 'POST' if 'type' not in document else document['type']
         if type_ == 'POST':

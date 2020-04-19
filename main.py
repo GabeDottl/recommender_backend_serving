@@ -28,12 +28,11 @@ if _container.config()['clear_user']:
   info('Clearing user history')
   _container.kv_store().put('user', orjson.dumps([]))
 
-
-
 # ########################## PRIVATE ENDPOINTS ############################
 # N.b.: THIS IS NOT LOCKED DOWN AT ALL!!!!
 # #security #hack This is allowed mostly for experimentation before committing to a more proper
 # communication mechanism.
+
 
 @common_container.exception_wrapper(_container.error_reporter())
 @app.route('/ingest', methods=['POST'])
@@ -173,7 +172,6 @@ def main_gunicorn(*args):
   # serve(app, host='0.0.0.0', port=5000)
   info(f'Running in guincorn mode (this will be last log if not wrapped w/guincorn.) Alt - use --debug-mode')
   return app
-
 
 
 if __name__ == '__main__':
