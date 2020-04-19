@@ -68,6 +68,7 @@ Werkzeug = "==1.0.1"
 orjson = "*"
 pyhash = "*"
 redis = "*"
+common = {git = "ssh://git@github.com/gabedottl/recommender_backend_common.git"}
 
 [requires]
 python_version = "3.6"
