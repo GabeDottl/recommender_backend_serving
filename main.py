@@ -171,6 +171,7 @@ def main_gunicorn(*args):
   # #performance #security Migrate to gunicorn? https://quintagroup.com/cms/python/web-server
   # from gunicorn import serve
   # serve(app, host='0.0.0.0', port=5000)
+  info(f'Running in guincorn mode (this will be last log if not wrapped w/guincorn.) Alt - use --debug-mode')
   return app
 
 
