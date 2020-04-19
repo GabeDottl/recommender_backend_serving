@@ -6,16 +6,30 @@ Not all are required. More may be included by each source.
 
 TODO: Consider formalizing this - e.g. SourceDocument class, protobuf, etc.
 '''
-REQUIRED_SOURCE_KEYS = (
-    'id',  # Optional; auto-generated if not present.
-    'image_url',
+
+
+REQUIRED_POST_SOURCE_KEYS = (
+    'id',  # TODO(local_id?) Optional; auto-generated if not present.
+    'type', # Optional; defaults to POST.
+    'image_url', # Optional
+    'source_url',
     'title_text',
     'secondary_text',  # E.g. Description, alt-text, etc.
     'created_utc_sec',
 )
 
+CLUSTER_SOURCE_KEYS = (
+    'id',  # TODO(local_id?) Optional; auto-generated if not present.
+    'type', # CLUSTER
+    'source_url',
+    'posts',
+    'title_text',
+    # secondary_text
+
+)
+
 # Documentr
-SOURCE_KEYS = (
+POST_SOURCE_KEYS = (
     'id',  # Optional; auto-generated if not present.
     'image_url',
     'title_text',

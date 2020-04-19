@@ -125,12 +125,12 @@ def cleanup(config):
 class LoggingErrorReporter:
 
   def report(self, message, *args, **kwargs):
-    error(message)
+    error(f'Logging error: {message}')
 
   def report_exception(self, *args, **kwargs):
     import sys
-    type_, value, traceback = sys.exec_info()
-    error(f'Reporting exception of type {type}: {value}')
+    type_, value, traceback = sys.exc_info()
+    error(f'Logging: Reporting exception of type {type}: {value}')
 
 
 class MultiErrorReporter:
