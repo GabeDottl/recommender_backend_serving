@@ -10,7 +10,7 @@ from flask_cors import CORS
 from simplekv.decorator import PrefixDecorator
 
 from common import common_container
-from common.store_utils import safe_get, post_store, cluster_store
+from common.store_utils import safe_get, post_store, tag_store
 from common.nsn_logging import debug, error, info, warning
 from ingest import Ingestion
 
@@ -70,8 +70,9 @@ def posts(page):
     id = session['id']
     debug(f'Reusing id: {id}')
   store = _container.kv_store()
-  cs = cluster_store(store)
+  # cs = cluster_store(store)
   ps = post_store(store)
+  ts = tag_store(store)
   user_history = safe_get(store, 'user', list)
   sent_set = set(user_history)
   cluster_names = safe_get(store, '_cluster_names', list)
@@ -80,33 +81,24 @@ def posts(page):
 
   post_count = 0
   MAX_POST_SEND = 30
-  for name in cluster_names:
-    cluster = safe_get(cs, name, list)
-    if len(cluster) < 2:
-      debug('Skipping small cluster')
-      continue
-    client_cluster = {}
-    client_cluster['type'] = 'CLUSTER'
-    client_cluster['id'] = name  # TODO?
-    client_cluster['name'] = name
-    cluster_items = client_cluster['items'] = []
-    for post_id in cluster:
-      if post_id in sent_set:
-        continue
-      sent_set.add(post_id)
-      post = safe_get(ps, post_id, {})
-      if post:
-        post_count += 1
-        cluster_items.append(post)
-      else:
-        _container.error_reporter().report(f'Found no post for {post_id}')
-      if post_count >= MAX_POST_SEND:
-        break
-    if not cluster_items:
-      continue
-    items.append(client_cluster)
-    if post_count >= MAX_POST_SEND:
-      break
+
+  cnn_source_ids = safe_get(ts, 'cnn_source', list)
+  for id_ in cnn_source_ids:
+    items.append(get_client_item(ps, id_))
+
+  # for name in cluster_names:
+  #   cluster = client_cluster_from_cluster_name(ps, name)
+  #   if len(cluster['posts']) < 2:
+  #     debug('Skipping small cluster')
+  #     continue
+  #   # for post_id in cluster:
+  #   #   if post_id in sent_set:
+  #   #     continue
+  #   #   sent_set.add(post_id)
+  #   items.append(cluster)
+  #   post_count += len(cluster['posts'])
+  #   if post_count >= MAX_POST_SEND:
+  #     break
 
   # TODO: make sent_set an LRU cache.
   # user_history += [d['id'] for d in posts]
@@ -118,10 +110,30 @@ def posts(page):
 
   if _container.config.debug_mode():
     from common import standard_keys
-    assert all(standard_keys.is_valid_item(i) for i in items), items
+    assert all(standard_keys.is_valid_item(i) for i in items)
 
   return orjson.dumps(items)
 
+def get_client_item(ps, id_):
+  item = orjson.loads(ps.get(id_))
+  if item['type'] == 'CLUSTER':
+    return client_cluster_from_cluster(ps, item)
+  assert item['type'] == 'POST'
+  return item  # Post store as client post
+
+def client_cluster_from_cluster(ps, cluster):
+  client_cluster = {}
+  client_cluster['type'] = 'CLUSTER'
+  client_cluster['id'] = cluster['id']  # TODO?
+  client_cluster['name'] = cluster['title_text'] # TODO: Rename
+  cluster_items = client_cluster['items'] = []
+  for post in cluster['posts']:
+    # post = safe_get(ps, post_id, dict)
+    if post:
+      cluster_items.append(post)
+    else:
+      _container.error_reporter().report(f'Found no post for {post}')
+  return client_cluster
 
 # POST
 @app.route('/liked', methods=['POST'])
