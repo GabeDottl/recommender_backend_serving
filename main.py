@@ -1,17 +1,17 @@
+import mimetypes
 import uuid
-import orjson
-
 from collections import defaultdict
 from http import HTTPStatus
 from itertools import islice
 
+import orjson
 from flask import Flask, jsonify, make_response, request, session
 from flask_cors import CORS
 from simplekv.decorator import PrefixDecorator
 
 from common import common_container
-from common.store_utils import safe_get, post_store, tag_store
 from common.nsn_logging import debug, error, info, warning
+from common.store_utils import post_store, safe_get, tag_store
 from ingest import Ingestion
 
 # Flask API cheatsheet: https://s3.us-east-2.amazonaws.com/prettyprinted/flask_cheatsheet.pdf
@@ -75,7 +75,7 @@ def posts(page):
   ts = tag_store(store)
   user_history = safe_get(store, 'user', list)
   sent_set = set(user_history)
-  cluster_names = safe_get(store, '_cluster_names', list)
+  # cluster_names = safe_get(store, '_cluster_names', list)
 
   items = []
 
@@ -84,7 +84,7 @@ def posts(page):
 
   cnn_source_ids = safe_get(ts, 'cnn_source', list)
   for id_ in cnn_source_ids:
-    items.append(get_client_item(ps, id_))
+    items.append(get_client_item_dict(ps, id_))
 
   # for name in cluster_names:
   #   cluster = client_cluster_from_cluster_name(ps, name)
@@ -112,28 +112,29 @@ def posts(page):
     from common import standard_keys
     assert all(standard_keys.is_valid_item(i) for i in items)
 
-  return orjson.dumps(items)
+  return app.response_class(response=orjson.dumps(items), status=200, mimetype='application/json')
 
-def get_client_item(ps, id_):
-  item = orjson.loads(ps.get(id_))
-  if item['type'] == 'CLUSTER':
-    return client_cluster_from_cluster(ps, item)
-  assert item['type'] == 'POST'
-  return item  # Post store as client post
+def get_client_item_dict(ps, id_):
+  return orjson.loads(ps.get(id_))
+  # item_dict = orjson.loads(ps.get(id_))
+  # if item_dict['type'] == 'CLUSTER':
+  #   return client_cluster_from_cluster(ps, item_dict)
+  # assert item_dict['type'] == 'POST'
+  # return item_dict  # Post store as client post
 
-def client_cluster_from_cluster(ps, cluster):
-  client_cluster = {}
-  client_cluster['type'] = 'CLUSTER'
-  client_cluster['id'] = cluster['id']  # TODO?
-  client_cluster['name'] = cluster['title_text'] # TODO: Rename
-  cluster_items = client_cluster['items'] = []
-  for post in cluster['posts']:
-    # post = safe_get(ps, post_id, dict)
-    if post:
-      cluster_items.append(post)
-    else:
-      _container.error_reporter().report(f'Found no post for {post}')
-  return client_cluster
+# def client_cluster_from_cluster(ps, cluster):
+#   client_cluster = {}
+#   client_cluster['type'] = 'CLUSTER'
+#   client_cluster['id'] = cluster['id']  # TODO?
+#   client_cluster['name'] = cluster['title_text'] # TODO: Rename
+#   cluster_items = client_cluster['items'] = []
+#   for post in cluster['posts']:
+#     # post = safe_get(ps, post_id, dict)
+#     if post:
+#       cluster_items.append(post)
+#     else:
+#       _container.error_reporter().report(f'Found no post for {post}')
+#   return client_cluster
 
 # POST
 @app.route('/liked', methods=['POST'])

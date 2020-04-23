@@ -1,25 +1,26 @@
 import os
 import shutil
-import orjson
 
+import orjson
 import pytest
 
 import main
-
-from common.standard_keys import is_valid_item
 from common import common_container
+from common.standard_keys import Post, RedditPost, item_from_json, item_from_dict
+from common.store_utils import safe_get, tag_store
 
 
 def _gen_source_test_data():
-  return [{
-      'id': str(i),
-      'image_url': str(i),
-      'title_text': str(i),
-      'secondary_text': str(i),
-      'created_utc_sec': str(i),
-      'source_url': str(i),
-      'retrieved_utc_sec': str(i),
-  } for i in range(20)]
+  return [
+      Post(
+          local_id=str(i),
+          source_type='POST',
+          image_url=str(i),
+          title_text=str(i),
+          secondary_text=str(i),
+          created_utc_sec=i,
+          source_url='a').to_dict() for i in range(20)
+  ]
 
 
 @pytest.fixture
@@ -48,37 +49,65 @@ def test_root(client):
 
 def test_ingest(client):
   test_data = _gen_source_test_data()
-  resp = client.post('/ingest', json={'collection': 'test2', 'documents': test_data})
+  resp = client.post(
+      '/ingest', json={
+          'collection': 'test2',
+          'documents': test_data
+      })
   assert resp.status_code == 200
   kv_store = main._container.kv_store()
-  assert 'cluster_test2' in kv_store
-  test2 = orjson.loads(kv_store.get('cluster_test2'))
+  test2 = safe_get(tag_store(kv_store), 'test2', list)
+  # assert 'cluster_test2' in kv_store
+  # test2 = orjson.loads(kv_store.get('cluster_test2'))
   assert len(test2) == len(test_data)
 
 
-def test_clusters(client):
+def test_reddit_ingest(client):
+  '''Ingest + Serving.'''
   test_data = [
-      {
-          'id': str(i),
-          'image_url': str(i),
-          'title_text': str(i),
-          'subreddit_name': f'subreddit_{i // 5}',  # 4 subreddits, 0, 1, 2, 3.
-          'secondary_text': str(i),
-          'created_utc_sec': str(i),
-          'source_url': str(i),
-          'retrieved_utc_sec': str(i),
-      } for i in range(20)
+      RedditPost(
+          local_id=str(i),
+          source_type='POST',
+          image_url=str(i),
+          title_text=str(i),
+          subreddit_name=f'subreddit_{i // 5}',  # 4 subreddits, 0, 1, 2, 3, 4.
+          author_name='Joe',
+          score=1,
+          secondary_text=str(i),
+          created_utc_sec=i,
+          source_url=str(i),
+          # retrieved_utc_sec=str(i),
+      ).to_dict() for i in range(20)
   ]
-  resp = client.post('/ingest', json={'collection': 'test', 'documents': test_data})
+  resp = client.post(
+      '/ingest', json={
+          'collection': 'test',
+          'documents': test_data
+      })
+  assert resp.status_code == 200
+  kv_store = main._container.kv_store()
+  for i in range(4):
+    subreddit_i = safe_get(tag_store(kv_store), f'subreddit_{i}', list)
+    assert len(subreddit_i) == 5, (i, kv_store.keys())
+
+def test_post(client):
+  # Ingestion copied from test_ingest.
+  test_data = _gen_source_test_data()
+  resp = client.post(
+      '/ingest', json={
+          'collection': 'cnn_source',
+          'documents': test_data
+      })
   assert resp.status_code == 200
   resp = client.get('/posts')
   assert resp.status_code == 200
-  items = resp.json
-  assert all(is_valid_item(i) for i in items)
-  # Ensure there are 4 clusters in the out.
-  assert len(list(filter(lambda i: i['type'] == 'CLUSTER', items))) == 4
-  for cluster in items:
-    assert len(cluster['posts']) == 5
+  items_dict = resp.json # TODO: orjson decode?
+  client_items = list(map(item_from_dict, items_dict))
+  assert len(client_items) == len(test_data)
+  # # Ensure there are 4 clusters in the out.
+  # assert len(list(filter(lambda i: i['type'] == 'CLUSTER', items))) == 4
+  # for cluster in items:
+  #   assert len(cluster['posts']) == 5
 
 
 # def test_posts(client):
@@ -102,9 +131,3 @@ def test_clusters(client):
 #   ids.extend([d['id'] for d in resp.json])
 #   # Ensure all ids are unique.
 #   assert len(set(ids)) == 20
-
-
-def _check_format(client_items):
-  for item in client_items:
-    # Check every expected key is present.
-    assert is_valid_item(item)
