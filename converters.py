@@ -45,7 +45,7 @@ def _document_to_cluster(doc, global_id_fn):
   return cluster
 
 def document_to_item(doc, global_id_fn):
-  if doc['source_type'] == 'POST':
+  if doc['article_type'] == 'POST':
     return _document_to_post(doc, global_id_fn)
   assert doc['type'] == 'CLUSTER'
   return _document_to_cluster(doc, global_id_fn)

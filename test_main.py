@@ -6,7 +6,7 @@ import pytest
 
 import main
 from common import common_container
-from common.standard_keys import Post, RedditPost, item_from_json, item_from_dict
+from common.data_types import Post, RedditPost, item_from_json, item_from_dict
 from common.store_utils import safe_get, tag_store
 
 
@@ -14,12 +14,11 @@ def _gen_source_test_data():
   return [
       Post(
           local_id=str(i),
-          source_type='POST',
           image_url=str(i),
           title_text=str(i),
           secondary_text=str(i),
           created_utc_sec=i,
-          source_url='a').to_dict() for i in range(20)
+          article_url='a').to_dict() for i in range(20)
   ]
 
 
@@ -31,13 +30,13 @@ def client():
   with main.app.test_client() as client:
     # Setup document store with some basic data.
     main._container = common_container.arg_container(test=True)
-    # source = store.get_or_create_collection('source')
-    # source.append_documents(['test'])
-    # test = main._container.source_document_store().get_collection('test')
-    # test.append_documents(_gen_source_test_data())
+    # source = store.get_or_create_source_name('source')
+    # source.append_articles(['test'])
+    # test = main._container.source_document_store().get_source_name('test')
+    # test.append_articles(_gen_source_test_data())
     yield client
     common_container.cleanup(main._container.config)
-    # store = LocalDocumentStore('./tmp')
+    # store = Localarticlestore('./tmp')
     # shutils.rmtree('tmp')
 
 
@@ -51,8 +50,8 @@ def test_ingest(client):
   test_data = _gen_source_test_data()
   resp = client.post(
       '/ingest', json={
-          'collection': 'test2',
-          'documents': test_data
+          'source_name': 'test2',
+          'articles': test_data
       })
   assert resp.status_code == 200
   kv_store = main._container.kv_store()
@@ -67,7 +66,6 @@ def test_reddit_ingest(client):
   test_data = [
       RedditPost(
           local_id=str(i),
-          source_type='POST',
           image_url=str(i),
           title_text=str(i),
           subreddit_name=f'subreddit_{i // 5}',  # 4 subreddits, 0, 1, 2, 3, 4.
@@ -75,14 +73,14 @@ def test_reddit_ingest(client):
           score=1,
           secondary_text=str(i),
           created_utc_sec=i,
-          source_url=str(i),
+          article_url=str(i),
           # retrieved_utc_sec=str(i),
       ).to_dict() for i in range(20)
   ]
   resp = client.post(
       '/ingest', json={
-          'collection': 'test',
-          'documents': test_data
+          'source_name': 'test',
+          'articles': test_data
       })
   assert resp.status_code == 200
   kv_store = main._container.kv_store()
@@ -95,8 +93,8 @@ def test_post(client):
   test_data = _gen_source_test_data()
   resp = client.post(
       '/ingest', json={
-          'collection': 'cnn_source',
-          'documents': test_data
+          'source_name': 'cnn_source',
+          'articles': test_data
       })
   assert resp.status_code == 200
   resp = client.get('/posts')
@@ -111,22 +109,22 @@ def test_post(client):
 
 
 # def test_posts(client):
-#   resp = client.post('/ingest', json={'collection': 'test', 'documents': _gen_source_test_data()})
+#   resp = client.post('/ingest', json={'source_name': 'test', 'articles': _gen_source_test_data()})
 #   assert resp.status_code == 200
 #   resp = client.get('/posts')
 #   assert resp.status_code == 200
 #   assert isinstance(resp.json, list)
 #   assert len(resp.json) == 10
-#   user_collection = main._container.user_document_store().get_collection('user')
-#   assert len(user_collection.documents) == 10
+#   user_source_name = main._container.user_document_store().get_source_name('user')
+#   assert len(user_source_name.articles) == 10
 #   ids = [d['id'] for d in resp.json]
 #   _check_format(resp.json)
 #   # Ensure only unique results are returned
 #   resp = client.get('/posts')
 #   assert isinstance(resp.json, list)
 #   assert len(resp.json) == 10
-#   user_collection = main._container.user_document_store().get_collection('user')
-#   assert len(user_collection.documents) == 20
+#   user_source_name = main._container.user_document_store().get_source_name('user')
+#   assert len(user_source_name.articles) == 20
 #   _check_format(resp.json)
 #   ids.extend([d['id'] for d in resp.json])
 #   # Ensure all ids are unique.

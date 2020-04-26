@@ -109,8 +109,8 @@ def posts(page):
     return make_response('500: No items', 500)
 
   if _container.config.debug_mode():
-    from common import standard_keys
-    assert all(standard_keys.is_valid_item(i) for i in items)
+    from common import data_types
+    assert all(data_types.is_valid_item(i) for i in items)
 
   return app.response_class(response=orjson.dumps(items), status=200, mimetype='application/json')
 
