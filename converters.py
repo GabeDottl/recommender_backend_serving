@@ -12,7 +12,7 @@ def _document_to_post(doc, global_id_fn):
           global_id_fn(doc),  # UID of the post for tracking.
       # TODO: Generate URL for content where applicable, e.g. Reddit?
       'url':
-          doc['source_url'] if 'source_url' in doc else '',  # Optional.
+          doc['article_url'] if 'article_url' in doc else '',  # Optional.
       # URL to thumbnail image.
       'thumbnail':
           doc['image_url'] if 'image_url' in doc else

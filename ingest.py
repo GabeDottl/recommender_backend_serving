@@ -4,7 +4,7 @@ import orjson
 
 from common import common_container
 from common.nsn_logging import debug, error, warning
-from common.data_types import item_from_article_dict
+from common.data_types import item_from_article, article_from_json
 from common.store_utils import post_store, put, safe_get, tag_store
 from converters import document_to_item
 from document_info import is_reddit
@@ -46,19 +46,20 @@ class Ingestion:
       self._add_to_tag(document['subreddit_name'], item)
 
 
-  def _ingest_article(self, source_name, source_dict):
-    item = item_from_article_dict(source_dict)
+  def _ingest_article(self, source_name, article):
+    item = item_from_article(article)
     # document_to_item(document, lambda d: self.hash_id(
-    #     f'{source_name}{d["source_url"]}{d["local_id"]}'))
+    #     f'{source_name}{d["article_url"]}{d["local_id"]}'))
     # TODO: Log original document with same ID?
     # TODO: Split cluster & inner-posts?
     put(self.ps, item.global_id, item.to_dict())
-    self._add_tags(source_name, source_dict, item)
+    self._add_tags(source_name, article.to_dict(), item)
 
   def ingest(self, content):
     debug(f'Ingesting data!!: {content}')
+    assert isinstance(content, dict), type(content)
     source_name = content['source_name']
-    articles = content['articles']
+    articles = [article_from_json(a) for a in content['articles']]
     try:
       # TODO: Consider being more nuanced here in handling partial ingestion - feels very arbitrary
       # to ingest first N articles until a single bad doc is hit...
