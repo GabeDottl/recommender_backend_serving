@@ -82,7 +82,7 @@ def posts(page):
   post_count = 0
   MAX_POST_SEND = 30
 
-  cnn_source_ids = safe_get(ts, 'cnn_source', list)
+  cnn_source_ids = safe_get(ts, 'news_api', list)
   for id_ in cnn_source_ids:
     items.append(get_client_item_dict(ps, id_))
 
@@ -108,9 +108,9 @@ def posts(page):
     _container.error_reporter().report('No items to serve!')
     return make_response('500: No items', 500)
 
-  if _container.config.debug_mode():
-    from common import data_types
-    assert all(data_types.is_valid_item(i) for i in items)
+  # if _container.config.debug_mode():
+  #   from common import data_types
+  #   assert all(data_types.is_valid_item(i) for i in items)
 
   return app.response_class(response=orjson.dumps(items), status=200, mimetype='application/json')
 
