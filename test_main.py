@@ -119,7 +119,7 @@ def test_cluster_ingest(client):
   assert len(test2) == len(test_data)
 
 
-def test_items(client):
+def test_serve_items(client):
   # Ingestion copied from test_ingest.
   test_data = _gen_post_test_data()
   resp = client.post(
@@ -130,33 +130,12 @@ def test_items(client):
   assert resp.status_code == 200
   resp = client.get('/items')
   assert resp.status_code == 200
-  items_dict = resp.json  # TODO: orjson decode?
+  items_dict = resp.json
   client_items = list(map(item_from_dict, items_dict))
   assert len(client_items) == len(test_data)
-  # # Ensure there are 4 clusters in the out.
-  # assert len(list(filter(lambda i: i['item_type'] == 'CLUSTER', items))) == 4
-  # for cluster in items:
-  #   assert len(cluster['posts']) == 5
 
 
-# def test_posts(client):
-#   resp = client.post('/ingest', json={'source_name': 'test', 'articles': _gen_post_test_data()})
-#   assert resp.status_code == 200
-#   resp = client.get('/posts')
-#   assert resp.status_code == 200
-#   assert isinstance(resp.json, list)
-#   assert len(resp.json) == 10
-#   user_source_name = main._container.user_document_store().get_source_name('user')
-#   assert len(user_source_name.articles) == 10
-#   ids = [d['id'] for d in resp.json]
-#   _check_format(resp.json)
-#   # Ensure only unique results are returned
-#   resp = client.get('/posts')
-#   assert isinstance(resp.json, list)
-#   assert len(resp.json) == 10
-#   user_source_name = main._container.user_document_store().get_source_name('user')
-#   assert len(user_source_name.articles) == 20
-#   _check_format(resp.json)
-#   ids.extend([d['id'] for d in resp.json])
-#   # Ensure all ids are unique.
-#   assert len(set(ids)) == 20
+def test_liked(client):
+  resp = client.post('/liked', query_string={'liked': 1, 'id': 'asdf'})
+  # TODO: Check internal state.
+  assert resp.status_code == 200
