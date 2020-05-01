@@ -58,10 +58,9 @@ def index():
   return f'This is {socket.gethostname()} @ {version}!!!!'
 
 
-# TODO: Rename /posts to /items?
-@app.route('/posts/<page>', methods=['GET'])
-@app.route('/posts', methods=['GET'], defaults={'page': None})
-def posts(page):
+@app.route('/items/<page>', methods=['GET'])
+@app.route('/items', methods=['GET'], defaults={'page': None})
+def items(page):
   if 'id' not in session:
     id = uuid.uuid4()
     debug(f'No id in session; creating id: {id}')
@@ -117,14 +116,14 @@ def posts(page):
 def get_client_item_dict(ps, id_):
   return orjson.loads(ps.get(id_))
   # item_dict = orjson.loads(ps.get(id_))
-  # if item_dict['type'] == 'CLUSTER':
+  # if item_dict['item_type'] == 'CLUSTER':
   #   return client_cluster_from_cluster(ps, item_dict)
-  # assert item_dict['type'] == 'POST'
+  # assert item_dict['item_type'] == 'POST'
   # return item_dict  # Post store as client post
 
 # def client_cluster_from_cluster(ps, cluster):
 #   client_cluster = {}
-#   client_cluster['type'] = 'CLUSTER'
+#   client_cluster['item_type'] = 'CLUSTER'
 #   client_cluster['id'] = cluster['id']  # TODO?
 #   client_cluster['name'] = cluster['title_text'] # TODO: Rename
 #   cluster_items = client_cluster['items'] = []

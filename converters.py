@@ -28,7 +28,7 @@ def _document_to_post(doc, global_id_fn):
   return post
 
 def _document_to_reddit_post(post, doc):
-  post['type'] = 'REDDIT_POST'
+  post['item_type'] = 'REDDIT_POST'
   post['subreddit'] = doc['subreddit_name']
   post['author'] = doc['author_name']
   post['score'] = int(doc['score'])
@@ -47,5 +47,5 @@ def _document_to_cluster(doc, global_id_fn):
 def document_to_item(doc, global_id_fn):
   if doc['article_type'] == 'POST':
     return _document_to_post(doc, global_id_fn)
-  assert doc['type'] == 'CLUSTER'
+  assert doc['item_type'] == 'CLUSTER'
   return _document_to_cluster(doc, global_id_fn)

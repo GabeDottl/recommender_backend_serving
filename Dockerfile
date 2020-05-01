@@ -12,12 +12,15 @@ RUN touch /root/.ssh/known_hosts
 # Add github key. Otherwise, "Host key verification failed. "
 RUN ssh-keyscan github.com >> /root/.ssh/known_hosts
 ##### END PRIVATE REPO CONFIG #####################
-
+RUN pip3 install pipenv
+COPY Pipfile .
+RUN pipenv update
+#COPY requirements.txt .
+# RUN pip3 install -r requirements.txt
 # Copy app in
-COPY . . 
-RUN pip3 install -r requirements.txt
+COPY *py ./
 # App runs on port 5000.
 EXPOSE 5000
 # TODO: -w4 and other gunicorn configuration settings...
-CMD gunicorn "main:main_gunicorn()" -b 0.0.0.0:5000
+CMD pipenv run gunicorn "main:main_gunicorn()" -b 0.0.0.0:5000
 #CMD python main.py

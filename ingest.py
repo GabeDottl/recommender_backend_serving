@@ -4,14 +4,14 @@ import orjson
 
 from common import common_container
 from common.nsn_logging import debug, error, warning
-from common.data_types import item_from_article, article_from_json
+from common.data_types import item_from_article, article_from_dict
 from common.store_utils import post_store, put, safe_get, tag_store
 from converters import document_to_item
 from document_info import is_reddit
 
 
 def is_cluster_item(item):
-  return item['type'] == 'CLUSTER'
+  return item['item_type'] == 'CLUSTER'
 
 class Ingestion:
 
@@ -59,7 +59,7 @@ class Ingestion:
     debug(f'Ingesting data!!: {content}')
     assert isinstance(content, dict), type(content)
     source_name = content['source_name']
-    articles = [article_from_json(a) for a in content['articles']]
+    articles = [article_from_dict(a) for a in content['articles']]
     try:
       # TODO: Consider being more nuanced here in handling partial ingestion - feels very arbitrary
       # to ingest first N articles until a single bad doc is hit...
