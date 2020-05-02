@@ -6,6 +6,8 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
+pytest = "*"
+pytest-xdist = "*"
 flask = "*"
 flask-cors = "*"
 common = {editable = true,git = "ssh://git@github.com/gabedottl/recommender_backend_common.git"}

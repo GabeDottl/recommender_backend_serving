@@ -58,9 +58,7 @@ def index():
   return f'This is {socket.gethostname()} @ {version}!!!!'
 
 
-@app.route('/items/<page>', methods=['GET'])
-@app.route('/items', methods=['GET'], defaults={'page': None})
-def items(page):
+def _items():
   if 'id' not in session:
     id = uuid.uuid4()
     debug(f'No id in session; creating id: {id}')
@@ -102,7 +100,23 @@ def items(page):
   # TODO: make sent_set an LRU cache.
   # user_history += [d['id'] for d in posts]
   store.put('user', orjson.dumps(list(sent_set)))
+  return items
 
+  
+
+@app.route('/items/<page>', methods=['GET'])
+@app.route('/items', methods=['GET'], defaults={'page': None})
+def items(page):
+  items_file = _container.config.items_file()
+  if items_file:
+    info(f'Returing from item-file - {items_file}')
+    with open(items_file) as f:
+      items = orjson.loads(''.join(f.readlines()))
+      # return items
+      # Note that we must explicitly mark the mimetype as utf-8
+  else:
+    items = _items()
+      
   if len(items) == 0:
     _container.error_reporter().report('No items to serve!')
     return make_response('500: No items', 500)
@@ -111,7 +125,7 @@ def items(page):
   #   from common import data_types
   #   assert all(data_types.is_valid_item(i) for i in items)
 
-  return app.response_class(response=orjson.dumps(items), status=200, mimetype='application/json')
+  return app.response_class(response=orjson.dumps(items), status=200, mimetype='application/json; charset=utf-8')
 
 def get_client_item_dict(ps, id_):
   return orjson.loads(ps.get(id_))

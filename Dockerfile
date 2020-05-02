@@ -12,6 +12,9 @@ RUN touch /root/.ssh/known_hosts
 # Add github key. Otherwise, "Host key verification failed. "
 RUN ssh-keyscan github.com >> /root/.ssh/known_hosts
 ##### END PRIVATE REPO CONFIG #####################
+
+WORKDIR /usr/src/app
+
 RUN pip3 install pipenv
 COPY Pipfile .
 RUN pipenv update
