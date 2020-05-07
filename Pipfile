@@ -12,4 +12,4 @@ flask = "*"
 flask-cors = "*"
 common = {editable = true,git = "ssh://git@github.com/gabedottl/recommender_backend_common.git"}
 gunicorn = "*"
-
+google-cloud-pubsub = "*"

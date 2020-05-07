@@ -1,5 +1,7 @@
 import mimetypes
 import uuid
+import os 
+import base64
 from collections import defaultdict
 from http import HTTPStatus
 from itertools import islice
@@ -13,6 +15,12 @@ from common import common_container
 from common.nsn_logging import debug, error, info, warning
 from common.store_utils import post_store, safe_get, tag_store
 from ingest import Ingestion
+
+
+from google.auth.transport import requests as google_requests
+from google.cloud import pubsub_v1
+from google.oauth2 import id_token
+
 
 # Flask API cheatsheet: https://s3.us-east-2.amazonaws.com/prettyprinted/flask_cheatsheet.pdf
 # http://flask-cheat-sheet.herokuapp.com/
@@ -42,6 +50,63 @@ def ingest():
   return Ingestion(_container).ingest(content)
 
 
+# [START push]
+
+# Configure the following environment variables via app.yaml
+# This is used in the push request handler to verify that the request came from
+# pubsub and originated from a trusted source.
+# app.config['PUBSUB_VERIFICATION_TOKEN'] = \
+#     os.environ['PUBSUB_VERIFICATION_TOKEN']
+app.config['PUBSUB_TOPIC'] = 'projects/recommender-270613/topics/ingestable' #os.environ['PUBSUB_TOPIC']
+app.config['GCLOUD_PROJECT'] = 'recommender-270613'
+
+# Global list to store messages, tokens, etc. received by this instance.
+MESSAGES = []
+TOKENS = []
+CLAIMS = []
+
+
+@app.route('/push-handlers/receive_messages', methods=['POST'])
+def receive_messages_handler():
+    # Verify that the request originates from the application.
+    # if (request.args.get('token', '') !=
+    #         app.config['PUBSUB_VERIFICATION_TOKEN']):
+    #     return 'Invalid request', 400
+
+    # Verify that the push request originates from Cloud Pub/Sub.
+    try:
+        # Get the Cloud Pub/Sub-generated JWT in the "Authorization" header.
+        bearer_token = request.headers.get('Authorization')
+        token = bearer_token.split(' ')[1]
+        TOKENS.append(token)
+
+        # Verify and decode the JWT. `verify_oauth2_token` verifies
+        # the JWT signature, the `aud` claim, and the `exp` claim.
+        # Note: For high volume push requests, it would save some network
+        # overhead if you verify the tokens offline by downloading Google's
+        # Public Cert and decode them using the `google.auth.jwt` module;
+        # caching already seen tokens works best when a large volume of
+        # messages have prompted a single push server to handle them, in which
+        # case they would all share the same token for a limited time window.
+        claim = id_token.verify_oauth2_token(token, google_requests.Request(),
+                                             audience='example.com')
+        # Must also verify the `iss` claim.
+        if claim['iss'] not in [
+            'accounts.google.com',
+            'https://accounts.google.com'
+        ]:
+            raise ValueError('Wrong issuer.')
+        CLAIMS.append(claim)
+    except Exception as e:
+        return 'Invalid token: {}\n'.format(e), 400
+
+    envelope = orjson.loads(request.data.decode('utf-8'))
+    payload = base64.b64decode(envelope['message']['data'])
+    MESSAGES.append(payload)
+    # Returning any 2xx status indicates successful receipt of the message.
+    return 'OK', 200
+# [END push]
+
 # ########################## PUBLIC ENDPOINTS ############################
 
 
@@ -58,7 +123,7 @@ def index():
   return f'This is {socket.gethostname()} @ {version}!!!!'
 
 
-def _items():
+def _get_items():
   if 'id' not in session:
     id = uuid.uuid4()
     debug(f'No id in session; creating id: {id}')
@@ -107,15 +172,8 @@ def _items():
 @app.route('/items/<page>', methods=['GET'])
 @app.route('/items', methods=['GET'], defaults={'page': None})
 def items(page):
-  items_file = _container.config.items_file()
-  if items_file:
-    info(f'Returing from item-file - {items_file}')
-    with open(items_file) as f:
-      items = orjson.loads(''.join(f.readlines()))
-      # return items
-      # Note that we must explicitly mark the mimetype as utf-8
-  else:
-    items = _items()
+  
+  items = _get_items()
       
   if len(items) == 0:
     _container.error_reporter().report('No items to serve!')
@@ -186,9 +244,27 @@ def _main():
 
 
 def _debug_app(*args):
+  global _get_items
   _main()
+  from argparse import ArgumentParser
+  parser = ArgumentParser()
+  parser.add_argument('--items_file')
+  parser.add_argument('--port', type=int, default=-1)
+  args, _ = parser.parse_known_args()
+  port = args.port if args.port != -1 else 5000
+  items_file = args.items_file
+  if items_file:
+    info(f'Returing from item-file - {items_file}')
+    with open(items_file) as f:
+      items = orjson.loads(''.join(f.readlines()))
+      def get_items():
+        return items
+      _get_items = get_items
+    
+      # return items
+      # Note that we must explicitly mark the mimetype as utf-8
   # Note: debug=True triggers hot-reloading!
-  app.run(host='0.0.0.0', port=5000, debug=True)
+  app.run(host='0.0.0.0', port=port, debug=True)
 
 
 def main_gunicorn(*args):
