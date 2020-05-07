@@ -68,6 +68,8 @@ CLAIMS = []
 
 @app.route('/push-handlers/receive_messages', methods=['POST'])
 def receive_messages_handler():
+    print('Received message!')
+  
     # Verify that the request originates from the application.
     # if (request.args.get('token', '') !=
     #         app.config['PUBSUB_VERIFICATION_TOKEN']):
@@ -103,6 +105,7 @@ def receive_messages_handler():
     envelope = orjson.loads(request.data.decode('utf-8'))
     payload = base64.b64decode(envelope['message']['data'])
     MESSAGES.append(payload)
+    print(f'Payload: {payload}')
     # Returning any 2xx status indicates successful receipt of the message.
     return 'OK', 200
 # [END push]
